@@ -80,14 +80,124 @@ def generate_html():
 
     post_script = iframe_css + post_script
 
-    pio.write_html(
+    inner_html = pio.to_html(
         fig,
-        str(HTML_OUT),
-        full_html=True,
+        full_html=False,
         include_plotlyjs="inline",
         config=config,
         post_script=post_script,
     )
+    outer_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Nowcast</title>
+
+        <style>
+            html, body {{
+                margin: 0;
+                height: 100%;
+                overflow: hidden;
+                font-family: Arial, sans-serif;
+            }}
+
+            #app-shell {{
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+            }}
+
+            #header {{
+                height: 48px;
+                background: #111;
+                color: white;
+                display: flex;
+                align-items: center;
+                padding: 0 16px;
+                font-size: 14px;
+                gap: 20px;
+            }}
+
+            #header-left {{
+                font-weight: 600;
+                white-space: nowrap;
+            }}
+
+            #header-controls {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-left: auto;
+            }}
+
+            #filter-panel {{
+                display: none;
+                background: white;
+                border-bottom: 1px solid rgba(0,0,0,0.1);
+                padding: 8px 12px;
+            }}
+
+            #filter-panel.open {{
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }}
+
+            #filter-btn {{
+                background: #333;
+                color: white;
+                border: none;
+                padding: 6px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+            }}
+
+            #filter-btn:hover {{
+                background: #555;
+            }}
+
+            #content {{
+                flex: 1;
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }}
+
+            #content > div {{
+                flex: 1;
+                min-height: 0;
+            }}
+        </style>
+    </head>
+
+    <body>
+
+    <div id="app-shell">
+        <div id="header">
+            <div id="header-left">
+                Nowcast ({APP_LANG})
+            </div>
+
+            <div id="header-controls">
+                <button id="filter-btn">Filters</button>
+            </div>
+        </div>
+
+        <div id="filter-panel"></div>
+        
+        <div id="content">
+            {inner_html}
+        </div>
+    </div>
+
+    </body>
+    </html>
+    """
+    with open(HTML_OUT, "w", encoding="utf-8") as f:
+        f.write(outer_html)
     print(f"[nowcast] HTML generado exitosamente.")
 
 

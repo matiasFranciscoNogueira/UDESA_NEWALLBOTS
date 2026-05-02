@@ -472,580 +472,630 @@ def make_post_script(items: list) -> str:
     items_json = json.dumps(items, ensure_ascii=False)
 
     post_script = r"""
-(function(){
-  var gd = document.getElementById('{plot_id}');
-  var LANG = "__LANG__";
-  if(!gd) return;
-  document.documentElement.style.height = '100%';
-  document.body.style.height = '100%';
-  document.body.style.margin = '0';
+  (function(){
+    var gd = document.getElementById('{plot_id}');
+    var LANG = "__LANG__";
+    if(!gd) return;
+    document.documentElement.style.height = '100%';
+    document.body.style.height = '100%';
+    document.body.style.margin = '0';
 
-  //MAIN PAGE CONTAINER
-  var pageContainer = document.createElement('div');
-  pageContainer.style.display = 'flex';
-  pageContainer.style.flexDirection = 'column';
-  pageContainer.style.height = '100vh';   //FULL viewport
-  pageContainer.style.width = '100%';
-  pageContainer.style.width = '100%';
-  pageContainer.style.margin = '0';
-  pageContainer.style.padding = '10px';
-  pageContainer.style.boxSizing = 'border-box';
-  pageContainer.style.background = 'white';
-  pageContainer.style.borderRadius = '10px';
-  pageContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+    // =========================
+    // SHELL-COMPATIBLE MODE
+    // =========================
 
+    // Make body clean (iframe-friendly)
+    document.documentElement.style.height = '100%';
+    document.body.style.height = '100%';
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
 
-  // wrap existing content instead of deleting
-  var existing = document.body.firstChild;
-  if(existing){
-    document.body.insertBefore(pageContainer, existing);
-    pageContainer.appendChild(existing);
-  }
-  document.body.appendChild(pageContainer);
-
-  //INTERACTION PANEL CONTAINER
-  var topContainer = document.createElement('div');
-  topContainer.style.display = 'flex';
-  topContainer.style.flexWrap = 'wrap';
-  topContainer.style.justifyContent = 'flex-start';
-  topContainer.style.alignItems = 'center';
-  topContainer.style.gap = '10px';
-  topContainer.style.padding = '10px';
-  topContainer.style.marginBottom = '10px';
-  topContainer.style.borderBottom = '1px solid rgba(0,0,0,0.1)';
-  topContainer.style.background = 'rgba(255,255,255,0.95)';
-  topContainer.style.position = 'relative';
-
-  //GRAPH CONTAINER
-  var graphContainer = document.createElement('div');
-  graphContainer.style.width = '100%';
-  graphContainer.style.flex = '1';       //takes remaining space
-  graphContainer.style.minHeight = '0';  //CRITICAL (fix overflow)
-  graphContainer.style.overflow = 'visible';
-
-  gd.style.width = '100%';
-  gd.style.height = '100%';
-  graphContainer.appendChild(gd);
-
-  //Container Alignments
-  pageContainer.appendChild(topContainer);
-  pageContainer.appendChild(graphContainer);
-
-  //Force Plotly to resize correctly after DOM move
-  setTimeout(function(){
-    if(window.Plotly){
-      Plotly.Plots.resize(gd);
-
-      //force full relayout (fix axis overflow)
-      Plotly.relayout(gd, {
-        autosize: true,
-        margin: {
-          l: 40,
-          r: 20,
-          t: 20,
-          b: 80   //THIS is the key (increase bottom space)
-        }
-      });
-    }
-  }, 50);
-
-  var ITEMS = __ITEMS_JSON__;
-  var doc = gd.ownerDocument;
-
-  function safeKey(s){ return String(s).replace(/[^a-z0-9_-]/gi,'_'); }
-
-  function el(tag, attrs, html){
-    var x = doc.createElement(tag);
-    if(attrs){
-      Object.keys(attrs).forEach(function(k){
-        if(k === 'style') x.setAttribute('style', attrs[k]);
-        else x.setAttribute(k, attrs[k]);
-      });
-    }
-    if(html !== undefined) x.innerHTML = html;
-    return x;
-  }
-
-  function isVisible(idx){
-    var v = gd.data[idx].visible;
-    return (v === undefined || v === true);
-  }
-
-  function setVisible(idx, on){
-    var newVis = on ? true : 'legendonly';
-    return Plotly.restyle(gd, {visible: newVis}, [idx]);
-  }
-
-  function setMany(indices, on){
-    if(!indices.length) return Promise.resolve();
-    var upd = {visible: []};
-    indices.forEach(function(_){ upd.visible.push(on ? true : 'legendonly'); });
-    return Plotly.restyle(gd, upd, indices);
-  }
-
-  // Aislar / restaurar (trace o grupo)
-  var isolateState = {active:false, saved:null, key:null};
-
-  function snapshotVisible(){
-    return gd.data.map(function(t){
-      return (t.visible === undefined) ? true : t.visible;
-    });
-  }
-
-  function restoreVisible(saved){
-    var indices = [];
-    var update = {visible: []};
-    for(var k=0; k<gd.data.length; k++){
-      indices.push(k);
-      update.visible.push(saved[k]);
-    }
-    return Plotly.restyle(gd, update, indices);
-  }
-
-  function isolate(indices, key){
-    if(isolateState.active && isolateState.key === key){
-      var saved = isolateState.saved;
-      isolateState.active = false;
-      isolateState.saved = null;
-      isolateState.key = null;
-      return restoreVisible(saved);
-    }
-
-    isolateState.active = true;
-    isolateState.saved = snapshotVisible();
-    isolateState.key = key;
-
-    var all = [];
-    var upd = {visible: []};
-    for(var j=0; j<gd.data.length; j++){
-      all.push(j);
-      upd.visible.push(indices.indexOf(j) >= 0 ? true : 'legendonly');
-    }
-    return Plotly.restyle(gd, upd, all);
-  }
-
-  // Insertar panel DENTRO del gráfico (overlay)
-  // aseguramos que el contenedor sea "position: relative"
-  if(!gd.style.position || gd.style.position === 'static'){
+    // Make Plotly fill entire iframe
     gd.style.position = 'relative';
-  }
+    gd.style.width = '100%';
+    gd.style.height = '100%';
+    gd.style.flex = '1';
 
-  // CSS compacto + overlay + scroll interno
-  if(!doc.getElementById('cb-legend-style')){
-    var st = el('style', {id:'cb-legend-style'});
-    st.textContent = `
-      .cb-panel{
-        position: absolute;
-        top: calc(100% + 6px);
-        left: 0;
-        background-color: white;
-        z-index: 1000;
-      }
-      .cb-editbtn{
-        font-size: 12px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.14);
-        background: rgba(255,255,255,0.85);
-        cursor: pointer;
-        width: 230px;        /* 👈 match panel */
-        flex: 0 0 auto;      /* 👈 prevent stretching */
-      }
-      .cb-editbtn:hover{ background: rgba(255,255,255,1); }
-      .cb-body{ margin-top: 8px; }
-      .cb-actions{
-        display:flex;
-        gap:6px;
-        flex-wrap: wrap;
-        margin: 6px 0 8px 0;
-      }
-      .cb-btn{
-        font-size: 10px;
-        padding: 5px 7px;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.12);
-        background: rgba(255,255,255,0.85);
-        cursor:pointer;
-      }
-      .cb-btn:hover{
-        background: rgba(255,255,255,1);
-        border-color: rgba(0,0,0,0.18);
-      }
-      .cb-search{
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.12);
-        padding: 6px 8px;
-        font-size: 11px;
-        outline: none;
-        background: rgba(255,255,255,0.90);
-      }
-      .cb-groups{
-        margin-top: 8px;
-        display:flex;
-        flex-direction: column;
-        gap: 8px;
-        max-height: 170px;      /* <<< scroll dentro del panel */
-        overflow: auto;
-        padding-right: 4px;
-      }
-      .cb-group{
-        display:flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .cb-group-head{
-        display:flex;
-        align-items:center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        border: 1px solid rgba(0,0,0,0.08);
-        background: rgba(0,0,0,0.03);
-        cursor:pointer;
-      }
-      .cb-group-name{
-        font-size: 11px;
-        font-weight: 700;
-      }
-      .cb-item{
-        display:flex;
-        align-items:center;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        cursor: pointer;
-        border: 1px solid rgba(0,0,0,0.06);
-        background: rgba(255,255,255,0.60);
-      }
-      .cb-item:hover{
-        background: rgba(255,255,255,0.95);
-        border-color: rgba(0,0,0,0.10);
-      }
-      .cb-item.off{
-        opacity: 0.55;
-      }
-      .cb-box{
-        width: 15px;
-        height: 15px;
-        border-radius: 5px;
-        border: 1px solid rgba(0,0,0,0.35);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        line-height: 1;
-        color: white;
-        background: transparent;
-        flex: 0 0 auto;
-      }
-      .cb-box.on{
-        background: rgba(16,185,129,0.95);
-        border-color: rgba(16,185,129,1);
-      }
-      .cb-box.mix{
-        background: rgba(59,130,246,0.95);
-        border-color: rgba(59,130,246,1);
-      }
-      .cb-swatch{
-        width: 11px;
-        height: 11px;
-        border-radius: 4px;
-        border: 1px solid rgba(0,0,0,0.15);
-        flex: 0 0 auto;
-      }
-      .cb-label{
-        font-size: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    `;
-    doc.head.appendChild(st);
-  }
-
-  // Remove previous panel if any
-  var prev = doc.getElementById('cb-panel');
-  if(prev) prev.remove();
-
-  // Panel DOM
-  var panel = el('div', {id:'cb-panel', class:'cb-panel'});
-
-  var editBtn = el('button', {class:'cb-editbtn'}, '__EDIT_LABEL__');
-
-  var editLabel = "__EDIT_LABEL__";
-  editBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-  editBtn.addEventListener('click', function(){
-    var body = panel.querySelector('.cb-body');
-    body.style.display = body.style.display === 'none' ? '' : 'none';
-  });
-
-  // Cuerpo colapsable (empieza oculto)
-  var body = el('div', {class:'cb-body', style:'display:none;'});
-
-  var search = el('input', {class:'cb-search', type:'text', placeholder:'__SEARCH__'});
-  body.appendChild(search);
-
-  var actions = el('div', {class:'cb-actions'});
-  var btnAllOn = el('button', {class:'cb-btn', type:'button'}, '__ALL_ON__');
-  var btnAllOff = el('button', {class:'cb-btn', type:'button'}, '__ALL_OFF__');
-  var btnOnlyNow = el('button', {class:'cb-btn', type:'button'}, '__ONLY_NOW__');
-  actions.appendChild(btnAllOn);
-  actions.appendChild(btnAllOff);
-  actions.appendChild(btnOnlyNow);
-  body.appendChild(actions);
-
-  var groupsBox = el('div', {class:'cb-groups'});
-  body.appendChild(groupsBox);
-
-  panel.appendChild(body);
-
-  
-
-  // ---- Date picker overlay (same height as Edit panel, to its right) ----
-  var dpDiv = el('div', {style:
-    'display:flex; align-items:center; gap:8px;'
-  });
-  var fromSpan = el('span', {style:'font-size:13px; color:#555; margin-right:4px;'}, '__FROM__');
-  var fromInput = el('input', {type:'date',
-    style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
-  var toSpan = el('span', {style:'font-size:13px; color:#555; margin:0 4px 0 10px;'}, '__TO__');
-  var toInput = el('input', {type:'date',
-    style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
-  dpDiv.appendChild(fromSpan);
-  dpDiv.appendChild(fromInput);
-  dpDiv.appendChild(toSpan);
-  dpDiv.appendChild(toInput);
-
-  // wrapper for button + panel
-  var btnWrap = el('div', {style: 'position: relative; display: inline-block;'});
-
-
-  topContainer.appendChild(dpDiv);
-  btnWrap.appendChild(editBtn);
-  btnWrap.appendChild(panel);
-  topContainer.appendChild(btnWrap);
-
-  var initRange = ((gd.layout || {}).xaxis || {}).range || [];
-  var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
-  var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
-
-  function applyDateRange(){
-    var from = fromInput.value;
-    var to = toInput.value;
     Plotly.relayout(gd, {
-      'xaxis.range[0]': from || xDataMin,
-      'xaxis.range[1]': to || xDataMax,
+      autosize: true
     });
-  }
 
-  fromInput.addEventListener('change', applyDateRange);
-  toInput.addEventListener('change', applyDateRange);
+    // Create ONLY the top control bar (no outer container)
+    var topContainer = document.createElement('div');
+    topContainer.style.display = 'flex';
+    topContainer.style.alignItems = 'center';
+    topContainer.style.gap = '8px';
+    topContainer.style.height = '100%';
 
-  // Group map
-  var groups = {};
-  ITEMS.forEach(function(it){
-    if(!groups[it.group]) groups[it.group] = [];
-    groups[it.group].push(it);
-  });
-
-  var groupNames = Object.keys(groups);
-  groupNames.sort(function(a,b){
-    var o = {'Series':0,'Confidence bands':1};
-    return (o[a]||9) - (o[b]||9);
-  });
-
-  function setBoxState(boxEl, state){
-    boxEl.classList.remove('on');
-    boxEl.classList.remove('mix');
-    boxEl.textContent = '';
-    if(state === 'on'){
-      boxEl.classList.add('on');
-      boxEl.textContent = '✓';
-    } else if(state === 'mix'){
-      boxEl.classList.add('mix');
-      boxEl.textContent = '−';
-    }
-  }
-
-  function rowState(rowEl, on){
-    var box = rowEl.querySelector('.cb-box');
-    if(on){
-      setBoxState(box, 'on');
-      rowEl.classList.remove('off');
-    } else {
-      setBoxState(box, 'off');
-      rowEl.classList.add('off');
-    }
-  }
-
-  function groupState(groupItems){
-    var onCount = 0;
-    groupItems.forEach(function(it){
-      if(isVisible(it.i)) onCount += 1;
+    // Push graph down so controls don’t overlap
+    Plotly.relayout(gd, {
+      margin: { t: 20 }   // space for controls
     });
-    if(onCount === 0) return 'off';
-    if(onCount === groupItems.length) return 'on';
-    return 'mix';
-  }
 
-  function syncAll(){
-    // rows
+    // Attach controls directly to body
+    var filterPanel = document.getElementById('filter-panel');
+
+    if (filterPanel) {
+      filterPanel.appendChild(topContainer);
+    }
+
+    // Resize after mount
+    function resizePlot() {
+      if (window.Plotly && gd) {
+        Plotly.Plots.resize(gd);
+      }
+    }
+
+    // initial resize
+    setTimeout(resizePlot, 50);
+
+    // resize on window change
+    window.addEventListener('resize', resizePlot);
+
+    var ITEMS = __ITEMS_JSON__;
+    var doc = gd.ownerDocument;
+
+    function safeKey(s){ return String(s).replace(/[^a-z0-9_-]/gi,'_'); }
+
+    function el(tag, attrs, html){
+      var x = doc.createElement(tag);
+      if(attrs){
+        Object.keys(attrs).forEach(function(k){
+          if(k === 'style') x.setAttribute('style', attrs[k]);
+          else x.setAttribute(k, attrs[k]);
+        });
+      }
+      if(html !== undefined) x.innerHTML = html;
+      return x;
+    }
+
+    function isVisible(idx){
+      var v = gd.data[idx].visible;
+      return (v === undefined || v === true);
+    }
+
+    function setVisible(idx, on){
+      var newVis = on ? true : 'legendonly';
+      return Plotly.restyle(gd, {visible: newVis}, [idx]);
+    }
+
+    function setMany(indices, on){
+      if(!indices.length) return Promise.resolve();
+      var upd = {visible: []};
+      indices.forEach(function(_){ upd.visible.push(on ? true : 'legendonly'); });
+      return Plotly.restyle(gd, upd, indices);
+    }
+
+    // Aislar / restaurar (trace o grupo)
+    var isolateState = {active:false, saved:null, key:null};
+
+    function snapshotVisible(){
+      return gd.data.map(function(t){
+        return (t.visible === undefined) ? true : t.visible;
+      });
+    }
+
+    function restoreVisible(saved){
+      var indices = [];
+      var update = {visible: []};
+      for(var k=0; k<gd.data.length; k++){
+        indices.push(k);
+        update.visible.push(saved[k]);
+      }
+      return Plotly.restyle(gd, update, indices);
+    }
+
+    function isolate(indices, key){
+      if(isolateState.active && isolateState.key === key){
+        var saved = isolateState.saved;
+        isolateState.active = false;
+        isolateState.saved = null;
+        isolateState.key = null;
+        return restoreVisible(saved);
+      }
+
+      isolateState.active = true;
+      isolateState.saved = snapshotVisible();
+      isolateState.key = key;
+
+      var all = [];
+      var upd = {visible: []};
+      for(var j=0; j<gd.data.length; j++){
+        all.push(j);
+        upd.visible.push(indices.indexOf(j) >= 0 ? true : 'legendonly');
+      }
+      return Plotly.restyle(gd, upd, all);
+    }
+
+    // Insertar panel DENTRO del gráfico (overlay)
+    // aseguramos que el contenedor sea "position: relative"
+    if(!gd.style.position || gd.style.position === 'static'){
+      gd.style.position = 'relative';
+    }
+
+    // CSS compacto + overlay + scroll interno
+    if(!doc.getElementById('cb-legend-style')){
+      var st = el('style', {id:'cb-legend-style'});
+      st.textContent = `
+        .cb-panel{
+          position: absolute;
+          top: calc(100% + 6px);
+          left: 0;
+          background-color: white;
+          z-index: 1000;
+        }
+        .cb-editbtn{
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.14);
+          background: rgba(255,255,255,0.85);
+          cursor: pointer;
+          width: 230px;        /* 👈 match panel */
+          flex: 0 0 auto;      /* 👈 prevent stretching */
+        }
+        .cb-editbtn:hover{ background: rgba(255,255,255,1); }
+        .cb-body{ margin-top: 8px; }
+        .cb-actions{
+          display:flex;
+          gap:6px;
+          flex-wrap: wrap;
+          margin: 6px 0 8px 0;
+        }
+        .cb-btn{
+          font-size: 10px;
+          padding: 5px 7px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.12);
+          background: rgba(255,255,255,0.85);
+          cursor:pointer;
+        }
+        .cb-btn:hover{
+          background: rgba(255,255,255,1);
+          border-color: rgba(0,0,0,0.18);
+        }
+        .cb-search{
+          width: 100%;
+          box-sizing: border-box;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.12);
+          padding: 6px 8px;
+          font-size: 11px;
+          outline: none;
+          background: rgba(255,255,255,0.90);
+        }
+        .cb-groups{
+          margin-top: 8px;
+          display:flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 170px;      /* <<< scroll dentro del panel */
+          overflow: auto;
+          padding-right: 4px;
+        }
+        .cb-group{
+          display:flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .cb-group-head{
+          display:flex;
+          align-items:center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(0,0,0,0.08);
+          background: rgba(0,0,0,0.03);
+          cursor:pointer;
+        }
+        .cb-group-name{
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .cb-item{
+          display:flex;
+          align-items:center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          cursor: pointer;
+          border: 1px solid rgba(0,0,0,0.06);
+          background: rgba(255,255,255,0.60);
+        }
+        .cb-item:hover{
+          background: rgba(255,255,255,0.95);
+          border-color: rgba(0,0,0,0.10);
+        }
+        .cb-item.off{
+          opacity: 0.55;
+        }
+        .cb-box{
+          width: 15px;
+          height: 15px;
+          border-radius: 5px;
+          border: 1px solid rgba(0,0,0,0.35);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          line-height: 1;
+          color: white;
+          background: transparent;
+          flex: 0 0 auto;
+        }
+        .cb-box.on{
+          background: rgba(16,185,129,0.95);
+          border-color: rgba(16,185,129,1);
+        }
+        .cb-box.mix{
+          background: rgba(59,130,246,0.95);
+          border-color: rgba(59,130,246,1);
+        }
+        .cb-swatch{
+          width: 11px;
+          height: 11px;
+          border-radius: 4px;
+          border: 1px solid rgba(0,0,0,0.15);
+          flex: 0 0 auto;
+        }
+        .cb-label{
+          font-size: 12px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      `;
+      doc.head.appendChild(st);
+    }
+
+    // Remove previous panel if any
+    var prev = doc.getElementById('cb-panel');
+    if(prev) prev.remove();
+
+    // Panel DOM
+    var panel = el('div', {id:'cb-panel', class:'cb-panel'});
+
+    var editBtn = el('button', {class:'cb-editbtn'}, '__EDIT_LABEL__');
+
+    var editLabel = "__EDIT_LABEL__";
+    editBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    editBtn.addEventListener('click', function(){
+      var body = panel.querySelector('.cb-body');
+      body.style.display = body.style.display === 'none' ? '' : 'none';
+    });
+
+    // Cuerpo colapsable (empieza oculto)
+    var body = el('div', {class:'cb-body', style:'display:none;'});
+
+    var search = el('input', {class:'cb-search', type:'text', placeholder:'__SEARCH__'});
+    body.appendChild(search);
+
+    var actions = el('div', {class:'cb-actions'});
+    var btnAllOn = el('button', {class:'cb-btn', type:'button'}, '__ALL_ON__');
+    var btnAllOff = el('button', {class:'cb-btn', type:'button'}, '__ALL_OFF__');
+    var btnOnlyNow = el('button', {class:'cb-btn', type:'button'}, '__ONLY_NOW__');
+    actions.appendChild(btnAllOn);
+    actions.appendChild(btnAllOff);
+    actions.appendChild(btnOnlyNow);
+    body.appendChild(actions);
+
+    var groupsBox = el('div', {class:'cb-groups'});
+    body.appendChild(groupsBox);
+
+    panel.appendChild(body);
+
+    
+
+    // ---- Date picker overlay (same height as Edit panel, to its right) ----
+    var dpDiv = el('div', {style:
+      'display:flex; align-items:center; gap:8px;'
+    });
+    var fromSpan = el('span', {style:'font-size:13px; color:#555; margin-right:4px;'}, '__FROM__');
+    var fromInput = el('input', {type:'date',
+      style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
+    var toSpan = el('span', {style:'font-size:13px; color:#555; margin:0 4px 0 10px;'}, '__TO__');
+    var toInput = el('input', {type:'date',
+      style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
+    dpDiv.appendChild(fromSpan);
+    dpDiv.appendChild(fromInput);
+    dpDiv.appendChild(toSpan);
+    dpDiv.appendChild(toInput);
+
+    // wrapper for button + panel
+    var btnWrap = el('div', {style: 'position: relative; display: inline-block;'});
+
+
+    topContainer.appendChild(dpDiv);
+
+    // =========================
+    // RANGE BUTTONS (FIXED)
+    // =========================
+
+    function setRange(start, end, dtick){
+      var update = {
+        "xaxis.range[0]": start.toISOString(),
+        "xaxis.range[1]": end.toISOString(),
+        "xaxis.tickmode": "linear"
+      };
+      if(dtick){
+        update["xaxis.dtick"] = dtick;
+      }
+      Plotly.relayout(gd, update);
+    }
+
+    function makeBtn(label, onClick){
+      var b = el('button', {
+        style: 'padding:6px 10px; border:1px solid #ccc; background:#f8f8f8; cursor:pointer; border-radius:4px;'
+      }, label);
+      b.onclick = onClick;
+      return b;
+    }
+
+    var btn6m = makeBtn("6m", function(){
+      var end = new Date(xDataMax);
+      var start = new Date(end);
+      start.setMonth(start.getMonth() - 6);
+      setRange(start, end, "M1");
+    });
+
+    var btnYTD = makeBtn("YTD", function(){
+      var end = new Date(xDataMax);
+      var start = new Date(end.getFullYear(), 0, 1);
+      setRange(start, end, "M1");
+    });
+
+    var btnAll = makeBtn("All", function(){
+      setRange(new Date(xDataMin), new Date(xDataMax), "M6");
+    });
+
+    // 👉 NEW wrapper (DO NOT reuse btnWrap)
+    var rangeWrap = el('div', {
+      style: 'display:flex; gap:6px;'
+    });
+
+    rangeWrap.appendChild(btn6m);
+    rangeWrap.appendChild(btnYTD);
+    rangeWrap.appendChild(btnAll);
+
+    topContainer.appendChild(rangeWrap);
+
+    // 👉 KEEP original btnWrap for legend
+    btnWrap.appendChild(editBtn);
+    btnWrap.appendChild(panel);
+    topContainer.appendChild(btnWrap);
+
+    var initRange = ((gd.layout || {}).xaxis || {}).range || [];
+    var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
+    var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
+
+    function applyDateRange(){
+      var from = fromInput.value ? new Date(fromInput.value) : new Date(xDataMin);
+      var to = toInput.value ? new Date(toInput.value) : new Date(xDataMax);
+      setRange(from, to, "M1");
+    }
+
+    fromInput.addEventListener('change', applyDateRange);
+    toInput.addEventListener('change', applyDateRange);
+
+    // Group map
+    var groups = {};
     ITEMS.forEach(function(it){
-      var row = doc.getElementById('cb-item-' + it.i);
-      if(!row) return;
-      rowState(row, isVisible(it.i));
+      if(!groups[it.group]) groups[it.group] = [];
+      groups[it.group].push(it);
     });
-    // groups
-    groupNames.forEach(function(g){
-      var gkey = safeKey(g);
-      var headBox = doc.getElementById('cb-group-box-' + gkey);
-      if(!headBox) return;
-      setBoxState(headBox, groupState(groups[g]));
-    });
-  }
 
-  function applyFilter(){
-    var q = (search.value || '').trim().toLowerCase();
-    groupNames.forEach(function(g){
-      var gkey = safeKey(g);
-      var anyShown = false;
-      groups[g].forEach(function(it){
+    var groupNames = Object.keys(groups);
+    groupNames.sort(function(a,b){
+      var o = {'Series':0,'Confidence bands':1};
+      return (o[a]||9) - (o[b]||9);
+    });
+
+    function setBoxState(boxEl, state){
+      boxEl.classList.remove('on');
+      boxEl.classList.remove('mix');
+      boxEl.textContent = '';
+      if(state === 'on'){
+        boxEl.classList.add('on');
+        boxEl.textContent = '✓';
+      } else if(state === 'mix'){
+        boxEl.classList.add('mix');
+        boxEl.textContent = '−';
+      }
+    }
+
+    function rowState(rowEl, on){
+      var box = rowEl.querySelector('.cb-box');
+      if(on){
+        setBoxState(box, 'on');
+        rowEl.classList.remove('off');
+      } else {
+        setBoxState(box, 'off');
+        rowEl.classList.add('off');
+      }
+    }
+
+    function groupState(groupItems){
+      var onCount = 0;
+      groupItems.forEach(function(it){
+        if(isVisible(it.i)) onCount += 1;
+      });
+      if(onCount === 0) return 'off';
+      if(onCount === groupItems.length) return 'on';
+      return 'mix';
+    }
+
+    function syncAll(){
+      // rows
+      ITEMS.forEach(function(it){
         var row = doc.getElementById('cb-item-' + it.i);
         if(!row) return;
-        var ok = (!q) || (it.name.toLowerCase().indexOf(q) >= 0);
-        row.style.display = ok ? '' : 'none';
-        if(ok) anyShown = true;
+        rowState(row, isVisible(it.i));
       });
-      var gWrap = doc.getElementById('cb-group-wrap-' + gkey);
-      if(gWrap) gWrap.style.display = anyShown ? '' : 'none';
-    });
-  }
+      // groups
+      groupNames.forEach(function(g){
+        var gkey = safeKey(g);
+        var headBox = doc.getElementById('cb-group-box-' + gkey);
+        if(!headBox) return;
+        setBoxState(headBox, groupState(groups[g]));
+      });
+    }
 
-  // Build UI per group
-  groupNames.forEach(function(g){
-    var gkey = safeKey(g);
-    var wrap = el('div', {class:'cb-group', id:'cb-group-wrap-' + gkey});
+    function applyFilter(){
+      var q = (search.value || '').trim().toLowerCase();
+      groupNames.forEach(function(g){
+        var gkey = safeKey(g);
+        var anyShown = false;
+        groups[g].forEach(function(it){
+          var row = doc.getElementById('cb-item-' + it.i);
+          if(!row) return;
+          var ok = (!q) || (it.name.toLowerCase().indexOf(q) >= 0);
+          row.style.display = ok ? '' : 'none';
+          if(ok) anyShown = true;
+        });
+        var gWrap = doc.getElementById('cb-group-wrap-' + gkey);
+        if(gWrap) gWrap.style.display = anyShown ? '' : 'none';
+      });
+    }
 
-    var head = el('div', {class:'cb-group-head'});
-    var left = el('div', {style:'display:flex; align-items:center; gap:8px;'});
-    var gbox = el('span', {class:'cb-box', id:'cb-group-box-' + gkey});
-    var gname = el('span', {class:'cb-group-name'}, g);
-    left.appendChild(gbox);
-    left.appendChild(gname);
-    head.appendChild(left);
-    head.appendChild(el('div', {style:'font-size:10px; color: rgba(0,0,0,0.50);'}, '__GROUP__'));
-    wrap.appendChild(head);
+    // Build UI per group
+    groupNames.forEach(function(g){
+      var gkey = safeKey(g);
+      var wrap = el('div', {class:'cb-group', id:'cb-group-wrap-' + gkey});
 
-    groups[g].forEach(function(it){
-      var row = el('div', {class:'cb-item', id:'cb-item-' + it.i});
-      var box = el('span', {class:'cb-box'});
-      var swatch = el('span', {class:'cb-swatch', style:'background:' + (it.color||'rgba(120,120,120,1)') + ';'});
-      var label = el('span', {class:'cb-label'});
-      label.textContent = it.name;
+      var head = el('div', {class:'cb-group-head'});
+      var left = el('div', {style:'display:flex; align-items:center; gap:8px;'});
+      var gbox = el('span', {class:'cb-box', id:'cb-group-box-' + gkey});
+      var gname = el('span', {class:'cb-group-name'}, g);
+      left.appendChild(gbox);
+      left.appendChild(gname);
+      head.appendChild(left);
+      head.appendChild(el('div', {style:'font-size:10px; color: rgba(0,0,0,0.50);'}, '__GROUP__'));
+      wrap.appendChild(head);
 
-      row.appendChild(box);
-      row.appendChild(swatch);
-      row.appendChild(label);
+      groups[g].forEach(function(it){
+        var row = el('div', {class:'cb-item', id:'cb-item-' + it.i});
+        var box = el('span', {class:'cb-box'});
+        var swatch = el('span', {class:'cb-swatch', style:'background:' + (it.color||'rgba(120,120,120,1)') + ';'});
+        var label = el('span', {class:'cb-label'});
+        label.textContent = it.name;
 
-      // click vs dblclick
-      var timer = null;
-      row.addEventListener('click', function(){
-        if(timer) return;
-        timer = setTimeout(function(){
-          var on = isVisible(it.i);
-          setVisible(it.i, !on).then(syncAll);
-          timer = null;
+        row.appendChild(box);
+        row.appendChild(swatch);
+        row.appendChild(label);
+
+        // click vs dblclick
+        var timer = null;
+        row.addEventListener('click', function(){
+          if(timer) return;
+          timer = setTimeout(function(){
+            var on = isVisible(it.i);
+            setVisible(it.i, !on).then(syncAll);
+            timer = null;
+          }, 220);
+        });
+        row.addEventListener('dblclick', function(){
+          if(timer){ clearTimeout(timer); timer = null; }
+          isolate([it.i], 'trace:' + it.i).then(syncAll);
+        });
+
+        wrap.appendChild(row);
+      });
+
+      // group click vs dblclick
+      var gTimer = null;
+      head.addEventListener('click', function(){
+        if(gTimer) return;
+        gTimer = setTimeout(function(){
+          var st = groupState(groups[g]);
+          var indices = groups[g].map(function(it){ return it.i; });
+          var turnOn = (st === 'off' || st === 'mix');
+          setMany(indices, turnOn).then(syncAll);
+          gTimer = null;
         }, 220);
       });
-      row.addEventListener('dblclick', function(){
-        if(timer){ clearTimeout(timer); timer = null; }
-        isolate([it.i], 'trace:' + it.i).then(syncAll);
+      head.addEventListener('dblclick', function(){
+        if(gTimer){ clearTimeout(gTimer); gTimer = null; }
+        var indices = groups[g].map(function(it){ return it.i; });
+        isolate(indices, 'group:' + gkey).then(syncAll);
       });
 
-      wrap.appendChild(row);
+      groupsBox.appendChild(wrap);
     });
 
-    // group click vs dblclick
-    var gTimer = null;
-    head.addEventListener('click', function(){
-      if(gTimer) return;
-      gTimer = setTimeout(function(){
-        var st = groupState(groups[g]);
-        var indices = groups[g].map(function(it){ return it.i; });
-        var turnOn = (st === 'off' || st === 'mix');
-        setMany(indices, turnOn).then(syncAll);
-        gTimer = null;
-      }, 220);
+    // Actions
+    btnAllOn.addEventListener('click', function(){
+      var idx = ITEMS.map(function(it){ return it.i; });
+      setMany(idx, true).then(syncAll);
     });
-    head.addEventListener('dblclick', function(){
-      if(gTimer){ clearTimeout(gTimer); gTimer = null; }
-      var indices = groups[g].map(function(it){ return it.i; });
-      isolate(indices, 'group:' + gkey).then(syncAll);
+    btnAllOff.addEventListener('click', function(){
+      var idx = ITEMS.map(function(it){ return it.i; });
+      setMany(idx, false).then(syncAll);
+    });
+    btnOnlyNow.addEventListener('click', function(){
+      var now = ITEMS.filter(function(it){ return it.name.toLowerCase() === 'nowcast'; }).map(function(it){ return it.i; });
+      var keep = {};
+      now.forEach(function(i){ keep[i] = true; });
+
+      var all = [];
+      var upd = {visible: []};
+      for(var k=0; k<gd.data.length; k++){
+        all.push(k);
+        upd.visible.push(keep[k] ? true : 'legendonly');
+      }
+      Plotly.restyle(gd, upd, all).then(syncAll);
     });
 
-    groupsBox.appendChild(wrap);
-  });
+    // Search
+    search.addEventListener('input', function(){ applyFilter(); });
 
-  // Actions
-  btnAllOn.addEventListener('click', function(){
-    var idx = ITEMS.map(function(it){ return it.i; });
-    setMany(idx, true).then(syncAll);
-  });
-  btnAllOff.addEventListener('click', function(){
-    var idx = ITEMS.map(function(it){ return it.i; });
-    setMany(idx, false).then(syncAll);
-  });
-  btnOnlyNow.addEventListener('click', function(){
-    var now = ITEMS.filter(function(it){ return it.name.toLowerCase() === 'nowcast'; }).map(function(it){ return it.i; });
-    var keep = {};
-    now.forEach(function(i){ keep[i] = true; });
+    // Initial
+    syncAll();
+    applyFilter();
 
-    var all = [];
-    var upd = {visible: []};
-    for(var k=0; k<gd.data.length; k++){
-      all.push(k);
-      upd.visible.push(keep[k] ? true : 'legendonly');
+    // Keep in sync if plot changes
+    if(gd.on){
+      gd.on('plotly_restyle', function(){ syncAll(); });
+      gd.on('plotly_redraw', function(){ syncAll(); });
     }
-    Plotly.restyle(gd, upd, all).then(syncAll);
-  });
 
-  // Search
-  search.addEventListener('input', function(){ applyFilter(); });
+    // -----------------------------
+    // DRAG dentro del gráfico (bounded)
+    // -----------------------------
+    function clampPos(left, top){
+      var rectG = gd.getBoundingClientRect();
+      var rectP = panel.getBoundingClientRect();
+      var pad = 6;
 
-  // Initial
-  syncAll();
-  applyFilter();
+      var maxLeft = rectG.width - rectP.width - pad;
+      var maxTop  = rectG.height - rectP.height - pad;
 
-  // Keep in sync if plot changes
-  if(gd.on){
-    gd.on('plotly_restyle', function(){ syncAll(); });
-    gd.on('plotly_redraw', function(){ syncAll(); });
-  }
+      var L = Math.max(pad, Math.min(left, maxLeft));
+      var T = Math.max(pad, Math.min(top,  maxTop));
+      return {L:L, T:T};
+    }
 
-  // -----------------------------
-  // DRAG dentro del gráfico (bounded)
-  // -----------------------------
-  function clampPos(left, top){
-    var rectG = gd.getBoundingClientRect();
-    var rectP = panel.getBoundingClientRect();
-    var pad = 6;
+    var dragging = false;
+    var offX = 0, offY = 0;
 
-    var maxLeft = rectG.width - rectP.width - pad;
-    var maxTop  = rectG.height - rectP.height - pad;
+    var filterBtn = document.getElementById('filter-btn');
+    var filterPanel = document.getElementById('filter-panel');
 
-    var L = Math.max(pad, Math.min(left, maxLeft));
-    var T = Math.max(pad, Math.min(top,  maxTop));
-    return {L:L, T:T};
-  }
+    if (filterBtn && filterPanel) {
+      filterBtn.onclick = function() {
+        filterPanel.classList.toggle('open');
 
-  var dragging = false;
-  var offX = 0, offY = 0;
+        // IMPORTANT: resize plot after panel opens/closes
+        setTimeout(function(){
+          if (window.Plotly && gd) {
+            Plotly.Plots.resize(gd);
+          }
+        }, 100);
+      };
+    }
 
-})();
+  })();
 """.replace("__ITEMS_JSON__", items_json) \
 .replace("__EDIT_LABEL__", t("edit")) \
 .replace("__ALL_ON__", "Todos" if APP_LANG=="ES" else "All on") \
