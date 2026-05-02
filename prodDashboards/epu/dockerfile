@@ -1,0 +1,38 @@
+# Dockerfile
+FROM python:3.13-slim
+
+# Best practices 2025
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y cron dos2unix && rm -rf /var/lib/apt/lists/*
+
+# Instalar Poetry de forma limpia y rápida
+RUN pip install --no-cache-dir poetry
+
+# Copiar solo archivos de dependencias primero (caché óptimo)
+COPY pyproject.toml poetry.lock* ./
+
+# Instalar dependencias del proyecto (sin root, como tú usas)
+RUN poetry config virtualenvs.create false && \
+    poetry install --no-root --only main --no-interaction --no-ansi
+
+# Copiar código y scripts
+COPY src ./src
+COPY scripts ./scripts
+COPY assets ./assets
+
+# Baseline Excel: siembra el volumen vacío en el primer deploy.
+# Docker copia el contenido de /app/data al volumen si este está vacío.
+# El bot EPU lo sobreescribirá cuando genere datos nuevos.
+COPY data/all_subcategories_compare.xlsx /app/data/all_subcategories_compare.xlsx
+
+# Entrypoint: importa Excel al arrancar, luego inicia cron + dashboard
+COPY entrypoint.sh ./entrypoint.sh
+RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
+
+EXPOSE 8050
+
+ENTRYPOINT ["/app/entrypoint.sh"]
+

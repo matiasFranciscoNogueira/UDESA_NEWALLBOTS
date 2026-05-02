@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "minimal-docker-plot"
+version = "0.1.0"
+description = "Dashboard EPU Subcategories - Dash + Plotly"
+authors = ["Leonardo <lgagetti@gmail.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.13"
+dash = "^3.3.0"
+plotly = "^6.5.0"
+pandas = "^2.3.3"
+openpyxl = "^3.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

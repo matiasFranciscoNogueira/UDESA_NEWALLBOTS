@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Env
+.env
+.env.*
+
+# Data (IMPORTANT)
+sharedData/
+*.sqlite
+*.db
+*.csv
+*.xlsx
+
+# Analysis outputs (FIXED)
+dataExtractors/epu/analisis/*
+!dataExtractors/epu/analisis/
+
+# Secrets (CRITICAL)
+config/gcp/
+
+# Docker / logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Legacy / nested repos
+LegacyProd/

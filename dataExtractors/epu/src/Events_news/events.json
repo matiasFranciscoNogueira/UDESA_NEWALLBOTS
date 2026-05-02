@@ -1,0 +1,59 @@
+{
+  "2018-01": {
+    "event": "Reforma previsional y cacerolazos masivos frente al Congreso",
+    "source": "https://es.wikipedia.org/wiki/Reforma_previsional_en_Argentina_de_2017"
+  },
+  "2018-05": {
+    "event": "Acuerdo récord con FMI por 50 mil M USD (FMI‑gate)",
+    "source": "https://es.wikipedia.org/wiki/FMIgate"
+  },
+
+  "2018-09": {
+    "event": "Crisis cambiaria 2018‑presente: devaluación del peso y tasa al 60 %",
+    "source": "https://es.wikipedia.org/wiki/Crisis_econ%C3%B3micas_en_Argentina_%282018-presente%29"
+  },
+  "2023-11": {
+    "event": "Segunda vuelta 19‑noviembre‑2023: Milei gana con ≈55.7 % vs Massa 44.3 %",
+    "source": "https://www.chequeado.com/el-explicador/javier-milei-es-el-nuevo-presidente-de-la-nacion-las-claves-de-los-resultados-del-balotaje/"
+  },
+  "2019-05": {
+    "event": "Apagón masivo deja sin luz a 50 M de personas",
+    "source": "https://www.clarin.com/sociedad/cronica-apagon-historico-domingo-50-millones-personas-quedaron-luz_0_x0wXGyVo2.html"
+  },
+  "2019-08": {
+    "event": "Derrota de Macri en PASO y fuerte devaluación",
+    "source": "https://www.infobae.com/america/mundo/2019/08/12/impactante-irreversible-y-dudas-sobre-la-economia-asi-reflejaron-los-diarios-del-mundo-el-resultado-de-las-primarias-argentinas/"
+  },
+  "2019-10": {
+    "event": "Elección presidencial: gana Fernández‑Fernández",
+    "source": "https://www.lanacion.com.ar/politica/alberto-fernandez-presidente-los-argentinos-votaron-por-nid2306831/"
+  },
+  "2020-05": {
+    "event": "COVID‑19: PBI cae 9.9 % anual y default técnico",
+    "source": "https://www.clarin.com/economia/economia-cayo-9-9-2020-impacto-pandemia-coronavirus_0_SKTqS6-57.html"
+  },
+  "2022-07": {
+    "event": "Inflación mensual récord (~7,4 % mom) e incertidumbre cambiaria",
+    "source": "https://elpais.com/argentina/2022-08-11/la-inflacion-en-argentina-sube-hasta-el-71-anual-y-profundiza-el-malestar-social.html"
+  },
+  "2023-08": {
+    "event": "PASO 2023: Milei fue el candidato más votado (~7.116.352 votos, ≈30.2 %)",
+    "source": "https://www.lanacion.com.ar/politica/cuantos-votos-tuvo-milei-en-las-elecciones-paso-2023-nid14082023/"
+  },
+  "2023-10": {
+    "event": "Elecciones generales 22‑octubre‑2023: Massa (36.78 %), Milei (29.99 %)",
+    "source": "https://es.wikipedia.org/wiki/Elecciones_presidenciales_de_Argentina_de_2023"
+  },
+  "2023-12": {
+    "event": "Milei asume y firma megadecreto de desregulación",
+    "source": "https://es.wikipedia.org/wiki/Decreto_de_Necesidad_y_Urgencia_70/2023"
+  },
+  "2025-04": {
+    "event": "Paquete cambiario: quita del cepo y acuerdo FMI USD 20 000 M",
+    "source": "https://observatoriociudad.org/an%C3%A1lisis-exhaustivo-de-las-nuevas-pol%C3%ADticas-cambiarias-y-el-acuerdo-con-el-fmi-en-argentina-abril-2025/"
+  },
+  "2025-07": {
+    "event": "Anuncio reducción de retenciones agro por Milei",
+    "source": "https://elpais.com/argentina/2025-07-26/milei-anuncia-una-reduccion-de-las-retenciones-a-las-exportaciones-agropecuarias.html"
+  }
+}

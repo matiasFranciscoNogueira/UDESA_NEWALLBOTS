@@ -1,0 +1,20 @@
+{
+    "E": [
+        "EPU_ECONOMY",
+        "EPU_ECONOMY_HISTORIC",
+        "ECON_INFORMAL_ECONOMY"
+    ],
+    "P": [
+        "LEGISLATION",
+        "EPU_POLICY_LEGISLATION",
+        "EPU_POLICY_REGULATION",
+        "EPU_CATS_REGULATION",
+        "EPU_POLICY_CONGRESS",
+        "EPU_POLICY_DEFICIT",
+        "ECON_BUDGET_DEFICIT"
+    ],
+    "U": [
+        "EPU_UNCERTAINTY",
+        "USPEC_UNCERTAINTY1"
+    ]
+}

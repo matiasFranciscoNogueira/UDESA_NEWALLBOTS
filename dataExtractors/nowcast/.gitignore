@@ -1,0 +1,35 @@
+# Entornos virtuales
+.venv/
+env/
+venv/
+
+# Archivos y carpetas de Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+#keys y secretos
+keys/
+
+# Archivos de configuración de Poetry
+poetry.lock
+
+# Distribuciones
+dist/
+build/
+*.egg-info/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs y bases de datos temporales
+*.log
+*.sqlite3
+
+# VSCode u otros IDEs
+.vscode/
+.idea/
+
+# Archivos no deseados
+*.docx

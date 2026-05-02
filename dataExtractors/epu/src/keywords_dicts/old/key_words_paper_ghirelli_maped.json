@@ -1,0 +1,49 @@
+{
+    "U": [
+        "EPU_UNCERTAINTY",
+        "TAX_DISEASE_CHROMOSOMAL_INSTABILITY",
+        "TAX_FINANCIAL_RISK",
+        "TAX_RISK",
+        "TAX_UNCERTAINTY"
+    ],
+    "E": [
+        "AID_ECONOMIC",
+        "ECON_DEVELOPMENTORGS_FEDERAL_MINISTRY_OF_ECONOMY",
+        "ECON_ECONOMIC_CRISIS",
+        "ECON_ECONOMIC_GROWTH",
+        "ECON_ECONOMY",
+        "ECON_FISCAL_ECONOMIC",
+        "ECON_INDUSTRIAL_ECONOMIC_ZONE",
+        "ECON_MINISTRY_OF_ECONOMY",
+        "ECON_POST_ECONOMIC_REFORM",
+        "ECON_REFORM_ECONOMIC",
+        "ECON_TRANSITION_ECONOMY",
+        "EPU_ECONOMY"
+    ],
+    "P": [
+        "ECON_BUDGET_DEFICIT",
+        "ECON_DEREGULATION",
+        "ECON_TAXATION",
+        "GOV_BUDGET",
+        "GOV_DEBT",
+        "GOV_DEBT_CEILING",
+        "GOV_DEFICIT",
+        "GOV_EXCHANGERATE",
+        "GOV_LEGISLATION",
+        "GOV_LAW",
+        "GOV_MONETARY",
+        "GOV_NORMS",
+        "GOV_OVERHAUL",
+        "GOV_PARLIAMENT",
+        "GOV_PINKHOUSE",
+        "GOV_POLICY",
+        "GOV_PUBLIC_SPENDING",
+        "GOV_REGULATION",
+        "GOV_REFORM",
+        "GOV_RULES",
+        "GOV_SOVEREIGN_DEBT",
+        "GOV_TARIFF",
+        "GOV_TREASURY",
+        "POL_GOVT"
+    ]
+}

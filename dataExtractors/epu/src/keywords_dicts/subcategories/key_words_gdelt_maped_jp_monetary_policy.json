@@ -1,0 +1,26 @@
+{
+    "E": [
+        "EPU_ECONOMY",
+        "EPU_ECONOMY_HISTORIC"
+    ],
+    "P": [
+        "EPU_POLICY_LEGISLATION",
+        "EPU_POLICY_REGULATION",
+        "EPU_POLICY_CONGRESS",
+        "EPU_POLICY_DEFICIT",
+        "EPU_POLICY_CENTRAL_BANK",
+        "EPU_POLICY_GOVERNMENT",
+        "EPU_POLICY",
+        "EPU_POLICY_POLICY",
+        "EPU_POLICY_AUTHORITIES",
+        "EPU_POLICY_POLICYMAKERS",
+        "EPU_POLICY_REGULATORY"    
+    ],
+    "U": [
+        "EPU_UNCERTAINTY",
+        "WB_1150_VOLATILITY"
+    ],
+    "S":[
+        "EPU_CATS_MONETARY_POLICY"
+    ]
+}

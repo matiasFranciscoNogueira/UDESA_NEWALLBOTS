@@ -1,0 +1,49 @@
+TRASPASO TÉCNICO — UDESA bots
+Abril 2026
+
+Estan corriendo
+
+1. EPU
+2. Nowcast
+
+CÓMO VIVE
+
+Todo corre en Docker sobre una maquina de Windows con acceso AnyDesk (en la universidad). Es completamente automático:
+el bot EPU corre el día 5 de cada mes y el dashboard se actualiza el día 6. No hay trabajo
+manual mensual.
+Se utiliza ngrok y ngix para tener un puente que una la URL publica con los puertos que expone el docker con los graficos.
+
+La URL pública se obtiene con: docker compose logs ngrok | findstr url
+Los dashboards están en /epu/ y /nowcast/ de esa URL.
+
+Ahora son:
+https://edris-hyperaemic-kolten.ngrok-free.dev/epu/
+https://edris-hyperaemic-kolten.ngrok-free.dev/nowcast/
+(free tier)
+
+PARA ACTUALIZAR EL CÓDIGO
+
+    git pull
+    docker compose up --build -d
+
+CREDENCIALES CRÍTICAS
+
+El archivo EPU-ARG-NEW/keys/epu-udesa-gdelt-reader-personal.json es una clave de Google
+Cloud (BigQuery) ligada a mi Octavio La Tessa. No está en
+git. Hay que reemplazarla con una nueva (yo dejo la mia un tiempo hasta que la cambien): Google Cloud Console
+→ IAM & Admin → Service Accounts → crear nueva cuenta con rol "BigQuery Editor" → descargar
+JSON → reemplazar el archivo en la VM. Sin esa clave el bot no puede correr.
+
+Para transferir la clave a una máquina nueva, copiarla manualmente (no va por el repo).
+
+Lo mismo en .env con el token de ngrok.
+
+ESTADO AL TRASPASO
+
+- Bot EPU: activo. Historial desde 2015, 5 categorías, cron día 5 de cada mes. Esta actualizado
+- Dashboard EPU: activo. Datos al día.
+- Dashboard Nowcast: activo. Datos estáticos (pendiente conectar estimación).
+- Deuda técnica menor documentada en TODO.md.
+- Mas detalles en README.md.
+
+Ante cualquier duda enviar mail a octaviolatessa@gmail.com

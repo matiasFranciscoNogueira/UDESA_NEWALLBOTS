@@ -1,0 +1,203 @@
+{
+    "Austria": [
+        "derstandard.at",
+        "diepresse.com",
+        "kurier.at"
+    ],
+    "Australia": [
+        "dailytelegraph.com.au",
+        "couriermail.com.au",
+        "theaustralian.com.au",
+        "theage.com.au",
+        "theadvertiser.com.au",
+        "themercury.com.au",
+        "smh.com.au",
+        "heraldsun.com.au"
+    ],
+    "Belgium": [
+        "gva.be",
+        "hbvl.be",
+        "demorgen.be",
+        "dhnet.be",
+        "tijd.be",
+        "hln.be",
+        "nieuwsblad.be",
+        "lalibre.be",
+        "lavenir.net",
+        "lecho.be",
+        "lesoir.be",
+        "standaard.be"
+    ],
+    "Brazil": [
+        "folha.uol.com.br"
+    ],
+    "Chile": [
+        "emol.com",
+        "lasegunda.com"
+    ],
+    "Colombia": [
+        "eltiempo.com"
+    ],
+    "Denmark": [
+        "berlingske.dk",
+        "bt.dk",
+        "ekstrabladet.dk",
+        "politiken.dk",
+        "weekendavisen.dk"
+    ],
+    "France": [
+        "lefigaro.fr",
+        "lemonde.fr"
+    ],
+    "Germany": [
+        "faz.net",
+        "handelsblatt.com"
+    ],
+    "Hungary": [
+        "index.hu",
+        "mandiner.hu",
+        "origo.hu"
+    ],
+    "India": [
+        "economictimes.indiatimes.com",
+        "financialexpress.com",
+        "hindustantimes.com",
+        "indianexpress.com",
+        "thehindu.com",
+        "thestatesman.com",
+        "timesofindia.indiatimes.com"
+    ],
+    "Italy": [
+        "corriere.it",
+        "lastampa.it"
+    ],
+    "Japan": [
+        "asahi.com",
+        "mainichi.jp",
+        "nikkei.com",
+        "yomiuri.co.jp"
+    ],
+    "Malaysia": [
+        "malaysiakini.com",
+        "themalaysianinsight.com",
+        "thestar.com.my"
+    ],
+    "Mexico": [
+        "elnorte.com",
+        "mural.com",
+        "reforma.com"
+    ],
+    "Netherlands": [
+        "ad.nl",
+        "nrc.nl",
+        "telegraaf.nl",
+        "trouw.nl",
+        "volkskrant.nl"
+    ],
+    "Norway": [
+        "aftenposten.no",
+        "dagbladet.no",
+        "vg.no"
+    ],
+    "Philippines": [
+        "inquirer.net",
+        "manilatimes.net",
+        "philstar.com"
+    ],
+    "Poland": [
+        "fakt.pl",
+        "gazetaprawna.pl",
+        "gazeta.pl",
+        "parkiet.com",
+        "rp.pl"
+    ],
+    "Portugal": [
+        "expresso.pt",
+        "jornaldenegocios.pt",
+        "publico.pt"
+    ],
+    "RussianFederation": [
+        "kommersant.ru"
+    ],
+    "Spain": [
+        "abc.es",
+        "cincodias.elpais.com",
+        "eleconomista.es",
+        "elmundo.es",
+        "elpais.com",
+        "expansion.com",
+        "lavanguardia.com"
+    ],
+    "Sweden": [
+        "aftonbladet.se",
+        "di.se",
+        "expressen.se",
+        "svd.se"
+    ],
+    "Switzerland": [
+        "blick.ch",
+        "letemps.ch",
+        "nzz.ch"
+    ],
+    "Thailand": [
+        "bangkokpost.com",
+        "nationthailand.com",
+        "thethaiger.com"
+    ],
+    "Turkey": [
+        "cumhuriyet.com.tr",
+        "dunya.com",
+        "haberturk.com",
+        "hurriyet.com.tr",
+        "milliyet.com.tr",
+        "sabah.com.tr",
+        "sozcu.com.tr"
+    ],
+    "Ukraine": [
+        "censor.net",
+        "pravda.com.ua",
+        "unian.net"
+    ],
+    "UnitedKingdom": [
+        "dailymail.co.uk",
+        "eveningstandard.co.uk",
+        "express.co.uk",
+        "ft.com",
+        "mirror.co.uk",
+        "standard.co.uk",
+        "theguardian.com",
+        "thenorthernecho.co.uk",
+        "thesun.co.uk",
+        "thetimes.co.uk",
+        "telegraph.co.uk"
+    ],
+    "Vietnam": [
+        "tuoitre.vn",
+        "vnexpress.net"
+    ],
+    "Luxembourg": [
+        "lessentiel.lu",
+        "tageblatt.lu",
+        "wort.lu"
+    ],
+    "Malta": [
+        "maltatoday.com.mt",
+        "timesofmalta.com"
+    ],
+    "Slovakia": [
+        "dennikn.sk",
+        "sme.sk"
+    ],
+    "Slovenia": [
+        "delo.si",
+        "rtvslo.si"
+    ],
+    "Croatia": [
+        "24sata.hr",
+        "dnevnik.hr",
+        "index.hr",
+        "jutarnji.hr",
+        "poslovni.hr",
+        "vecernji.hr"
+    ]
+}

@@ -1,0 +1,58 @@
+{
+  "2018-01": {
+    "event": "Pension reform and protests",
+    "source": "https://es.wikipedia.org/wiki/Reforma_previsional_en_Argentina_de_2017"
+  },
+  "2018-05": {
+    "event": "IMF deal USD 50B",
+    "source": "https://es.wikipedia.org/wiki/FMIgate"
+  },
+  "2018-09": {
+    "event": "FX crisis starts",
+    "source": "https://es.wikipedia.org/wiki/Crisis_econ%C3%B3micas_en_Argentina_%282018-presente%29"
+  },
+  "2019-05": {
+    "event": "Nationwide blackout",
+    "source": "https://www.clarin.com/sociedad/cronica-apagon-historico-domingo-50-millones-personas-quedaron-luz_0_x0wXGyVo2.html"
+  },
+  "2019-08": {
+    "event": "PASO loss and devaluation",
+    "source": "https://www.infobae.com/america/mundo/2019/08/12/impactante-irreversible-y-dudas-sobre-la-economia-asi-reflejaron-los-diarios-del-mundo-el-resultado-de-las-primarias-argentinas/"
+  },
+  "2019-10": {
+    "event": "Fernández elected",
+    "source": "https://www.lanacion.com.ar/politica/alberto-fernandez-presidente-los-argentinos-votaron-por-nid2306831/"
+  },
+  "2020-05": {
+    "event": "GDP -9.9%, default",
+    "source": "https://www.clarin.com/economia/economia-cayo-9-9-2020-impacto-pandemia-coronavirus_0_SKTqS6-57.html"
+  },
+  "2022-07": {
+    "event": "High inflation and FX stress",
+    "source": "https://elpais.com/argentina/2022-08-11/la-inflacion-en-argentina-sube-hasta-el-71-anual-y-profundiza-el-malestar-social.html"
+  },
+  "2023-08": {
+    "event": "Milei wins PASO",
+    "source": "https://www.lanacion.com.ar/politica/cuantos-votos-tuvo-milei-en-las-elecciones-paso-2023-nid14082023/"
+  },
+  "2023-10": {
+    "event": "General election",
+    "source": "https://es.wikipedia.org/wiki/Elecciones_presidenciales_de_Argentina_de_2023"
+  },
+  "2023-11": {
+    "event": "Milei wins runoff",
+    "source": "https://www.chequeado.com/el-explicador/javier-milei-es-el-nuevo-presidente-de-la-nacion-las-claves-de-los-resultados-del-balotaje/"
+  },
+  "2023-12": {
+    "event": "Milei takes office",
+    "source": "https://es.wikipedia.org/wiki/Decreto_de_Necesidad_y_Urgencia_70/2023"
+  },
+  "2025-04": {
+    "event": "FX reform and IMF deal",
+    "source": "https://observatoriociudad.org/an%C3%A1lisis-exhaustivo-de-las-nuevas-pol%C3%ADticas-cambiarias-y-el-acuerdo-con-el-fmi-en-argentina-abril-2025/"
+  },
+  "2025-07": {
+    "event": "Export tax cut",
+    "source": "https://elpais.com/argentina/2025-07-26/milei-anuncia-una-reduccion-de-las-retenciones-a-las-exportaciones-agropecuarias.html"
+  }
+}

@@ -1,0 +1,14 @@
+/* Evita el doble scroll cuando el dashboard está embebido en un iframe.
+   Asegura que el gráfico ocupe toda la altura disponible heredando del iframe
+   en lugar de usar 100vh (que puede referirse al viewport del padre). */
+
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+#react-entry-point,
+#react-entry-point > div {
+    height: 100%;
+}
