@@ -228,33 +228,92 @@
       style: 'display:flex; gap:6px; margin-left:10px;'
     });
 
-    function setRange(start, end) {
+    function setRange(start, end, dtick) {
       fromInput.value = start.toISOString().slice(0,10);
       toInput.value = end.toISOString().slice(0,10);
 
-      Plotly.relayout(gd, {
+      var update = {
         "xaxis.range[0]": start.toISOString(),
-        "xaxis.range[1]": end.toISOString()
-      });
+        "xaxis.range[1]": end.toISOString(),
+        "xaxis.tickmode": "linear"
+      };
+
+      if (dtick) {
+        update["xaxis.dtick"] = dtick;
+      }
+
+      Plotly.relayout(gd, update);
     }
 
     // 6 MONTHS
     quickWrap.appendChild(el('button', {
       style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
     }, '6m')).onclick = function () {
-      var end = new Date();
-      var start = new Date();
-      start.setMonth(start.getMonth() - 6);
-      setRange(start, end);
+      var end = xDataMax ? new Date(xDataMax) : null;
+      if (!end || !xDataMin) return;
+
+      var target = new Date(end);
+      target.setMonth(target.getMonth() - 6);
+
+      // Find closest available date >= target
+      var allX = [];
+
+      gd.data.forEach(function(trace) {
+        if (trace.x) allX = allX.concat(trace.x);
+      });
+
+      allX = allX.map(function(d) { return new Date(d); })
+                .sort(function(a, b) { return a - b; });
+
+      var start = allX[0];
+
+      for (var i = 0; i < allX.length; i++) {
+        if (allX[i] >= target) {
+          start = allX[i];
+          break;
+        }
+      }
+
+      // Clamp safety
+      if (start < xDataMin) start = new Date(xDataMin);
+
+      setRange(start, end, "M1");
     };
 
     // YTD
     quickWrap.appendChild(el('button', {
       style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
     }, 'YTD')).onclick = function () {
-      var now = new Date();
-      var start = new Date(now.getFullYear(), 0, 1);
-      setRange(start, now);
+      var end = xDataMax ? new Date(xDataMax) : null;
+      if (!end || !xDataMin) return;
+
+      // Start = Jan 1 of the YEAR OF LAST DATA (not current year)
+      var target = new Date(end.getFullYear(), 0, 1);
+
+      // Build dataset index (same as 6m)
+      var allX = [];
+
+      gd.data.forEach(function(trace) {
+        if (trace.x) allX = allX.concat(trace.x);
+      });
+
+      allX = allX.map(function(d) { return new Date(d); })
+                .sort(function(a, b) { return a - b; });
+
+      // Find first available date >= Jan 1
+      var start = allX[0];
+
+      for (var i = 0; i < allX.length; i++) {
+        if (allX[i] >= target) {
+          start = allX[i];
+          break;
+        }
+      }
+
+      // Clamp safety
+      if (start < xDataMin) start = new Date(xDataMin);
+
+      setRange(start, end, "M1");
     };
 
     // ALL
@@ -270,7 +329,8 @@
       // Reset graph
       Plotly.relayout(gd, {
         "xaxis.range[0]": xDataMin.toISOString(),
-        "xaxis.range[1]": xDataMax.toISOString()
+        "xaxis.range[1]": xDataMax.toISOString(),
+        "xaxis.dtick": "M6"   // 🔥 quarterly ticks for full range
       });
     };
 
@@ -419,25 +479,22 @@
 
     // Estado inicial
     syncAll(gd, items);
-    setTimeout(function () {
-      try {
-        Plotly.Plots.resize(gd);
+    if (!gd._initialTickFix) {
+      gd._initialTickFix = true;
 
+      gd.once('plotly_afterplot', function () {
         Plotly.relayout(gd, {
           'margin.b': 120,
-
           'xaxis.automargin': true,
           'xaxis.tickformat': "%b %Y",
           'xaxis.tickangle': -45,
-          'xaxis.dtick': "M6",   // 👈 EXACT FIX (1 tick per year)
-
+          'xaxis.tickmode': "linear",
+          'xaxis.dtick': "M6",
           'yaxis.automargin': true
         });
-
-      } catch (e) {
-        console.log("resize failed", e);
-      }
-    }, 400);
+      });
+      
+    }
   }
 
   // ─── Init ────────────────────────────────────────────────────────────────────

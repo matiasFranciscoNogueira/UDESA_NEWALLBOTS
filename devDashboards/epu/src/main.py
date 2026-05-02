@@ -149,14 +149,14 @@ def update_graph(_):
         showlegend=False,
         uirevision="constant",
         font=dict(family="Helvetica, Arial, sans-serif", size=14, color="black"),
-        margin=dict(l=70, r=20, t=20, b=70),
+        margin=dict(l=70, r=20, t=20, b=120),
         autosize=True
     )
 
     fig.update_xaxes(
         tickangle=-45,
         tickformat="%b %Y",
-        nticks=20,
+        dtick="M6",
         showgrid=False,
         zeroline=False,
         showline=False,
@@ -168,6 +168,7 @@ def update_graph(_):
         spikethickness=1,
         rangeslider=dict(visible=False),
         type="date",
+        tickmode="linear",
     )
 
     fig.update_yaxes(
