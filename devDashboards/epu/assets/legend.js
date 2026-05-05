@@ -6,7 +6,7 @@
   'use strict';
 
   var path = window.location.pathname.toLowerCase();
-  var LANG = path.includes("/es/") ? "ES" : "EN";
+  var LANG = document.documentElement.lang || "EN";
 
   var T = {
     EN: {
@@ -15,7 +15,10 @@
       CHOOSE_KPI: "Choose KPIs",
       SEARCH: "Search...",
       ALL_ON: "All on",
-      ALL_OFF: "All off"
+      ALL_OFF: "All off",
+      SIX_MONTHS: "6m",
+      YTD: "YTD",
+      ALL: "All"
     },
     ES: {
       FROM: "Desde",
@@ -23,7 +26,10 @@
       CHOOSE_KPI: "Editar Indicadores",
       SEARCH: "Buscar...",
       ALL_ON: "Activar todo",
-      ALL_OFF: "Desactivar todo"
+      ALL_OFF: "Desactivar todo",
+      SIX_MONTHS: "6m",
+      YTD: "YTD",
+      ALL: "Todo"
     }
   }[LANG];
 
@@ -234,8 +240,7 @@
 
       var update = {
         "xaxis.range[0]": start.toISOString(),
-        "xaxis.range[1]": end.toISOString(),
-        "xaxis.tickmode": "linear"
+        "xaxis.range[1]": end.toISOString()
       };
 
       if (dtick) {
@@ -248,7 +253,7 @@
     // 6 MONTHS
     quickWrap.appendChild(el('button', {
       style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
-    }, '6m')).onclick = function () {
+    }, T.SIX_MONTHS)).onclick = function () {
       var end = xDataMax ? new Date(xDataMax) : null;
       if (!end || !xDataMin) return;
 
@@ -283,7 +288,7 @@
     // YTD
     quickWrap.appendChild(el('button', {
       style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
-    }, 'YTD')).onclick = function () {
+    }, T.YTD)).onclick = function () {
       var end = xDataMax ? new Date(xDataMax) : null;
       if (!end || !xDataMin) return;
 
@@ -319,7 +324,7 @@
     // ALL
     quickWrap.appendChild(el('button', {
       style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
-    }, 'All')).onclick = function () {
+    }, T.ALL)).onclick = function () {
       if (!xDataMin || !xDataMax) return;
 
       // Reset inputs
@@ -486,10 +491,6 @@
         Plotly.relayout(gd, {
           'margin.b': 120,
           'xaxis.automargin': true,
-          'xaxis.tickformat': "%b %Y",
-          'xaxis.tickangle': -45,
-          'xaxis.tickmode': "linear",
-          'xaxis.dtick': "M6",
           'yaxis.automargin': true
         });
       });

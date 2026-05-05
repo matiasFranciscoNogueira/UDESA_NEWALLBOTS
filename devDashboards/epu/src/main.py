@@ -26,7 +26,56 @@ app = Dash(
 server = app.server
 server.config["APPLICATION_ROOT"] = url_prefix
 
-PAGE_LANG = os.environ.get("LANG")
+raw_lang = os.environ.get("LANG", "EN").upper()
+
+if raw_lang.startswith("ES"):
+    APP_LANG = "ES"
+else:
+    APP_LANG = "EN"
+
+app.index_string = f"""
+<!DOCTYPE html>
+<html lang="{APP_LANG}">
+<head>
+    {{%metas%}}
+    {{%css%}}
+</head>
+<body>
+    {{%app_entry%}}
+    <footer>
+        {{%config%}}
+        {{%scripts%}}
+        {{%renderer%}}
+    </footer>
+</body>
+</html>
+"""
+
+# -------------------------
+# TRANSLATIONS
+# -------------------------
+
+TRANSLATIONS = {
+    "EN": {
+        "date": "Date",
+        "epu": "EPU",
+        "months": ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+        "currency_crisis": "Currency crisis",
+        "monetary_policy": "Monetary policy",
+        "trade": "Trade",
+    },
+    "ES": {
+        "date": "Fecha",
+        "epu": "EPU",
+        "months": ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
+        "currency_crisis": "Crisis Monetaria",
+        "monetary_policy": "Politica Monetaria",
+        "trade": "Comercio",
+    }
+}
+
+def t(key):
+    return TRANSLATIONS.get(APP_LANG, {}).get(key, key)
 
 # -------------------------
 # DATABASE PATH
@@ -39,10 +88,6 @@ if not RESULTS_DB.exists():
     )
 print("Using DB at:", RESULTS_DB)
 
-# -------------------------
-# TRANSLATION
-# -------------------------
-DATELABEL = "Date" if PAGE_LANG == "EN" else "Fecha"
 
 # -------------------------
 # LAYOUT
@@ -119,18 +164,30 @@ def update_graph(_):
 
     fig = go.Figure()
 
+    COLUMN_MAP = {
+        "currency_crisis": "currency_crisis",
+        "monetary_policy": "monetary_policy",
+        "trade": "trade"
+    }
     for i, col in enumerate(df.columns):
+        normalized = col.lower().replace(" ", "_")
+
+        if normalized in TRANSLATIONS[APP_LANG]:
+            label = t(normalized)
+        else:
+            label = col
+
         fig.add_trace(
             go.Scatter(
                 x=df.index,
                 y=df[col],
                 mode="lines",
-                name=col,
+                name=label,
                 line=dict(color=TAB20[i % len(TAB20)], width=2.2),
                 hovertemplate="<b>%{text}</b><br>" +
-                            DATELABEL + ": %{x|%Y-%m}<br>" +
-                            "EPU: %{y:.2f}<extra></extra>",
-                text=[col] * len(df)
+                f"{t('date')}: %{{x|%Y-%m}}<br>" +
+                f"{t('epu')}: %{{y:.2f}}<extra></extra>",
+                text=[label] * len(df)
             )
         )
 
@@ -143,8 +200,8 @@ def update_graph(_):
                 name="Ghirelli (benchmark)",
                 line=dict(color="black", width=3.5, dash="dash"),
                 hovertemplate="<b>Ghirelli (benchmark)</b><br>" +
-                            DATELABEL + ": %{x|%Y-%m}<br>" +
-                            "EPU: %{y:.2f}<extra></extra>"
+                f"{t('date')}: %{{x|%Y-%m}}<br>" +
+                f"{t('epu')}: %{{y:.2f}}<extra></extra>"
             )
         )
 
@@ -158,10 +215,37 @@ def update_graph(_):
         autosize=True
     )
 
+    # Build translated monthly ticks
+    dates = pd.to_datetime(df.index).sort_values()
+
+    monthly_dates = pd.date_range(
+        start=dates.min(),
+        end=dates.max(),
+        freq="MS"
+    )
+
+    months = t("months")
+
+    total_months = len(monthly_dates)
+
+    # 🎯 Adaptive step
+    if total_months <= 24:
+        step = 1        # every month
+    elif total_months <= 60:
+        step = 3        # quarterly
+    else:
+        step = 6        # semi-annual
+
+    filtered_dates = monthly_dates[::step]
+
+    tickvals = [d.to_pydatetime() for d in filtered_dates]
+    ticktext = [f"{months[d.month-1]} {d.year}" for d in filtered_dates]
+
     fig.update_xaxes(
         tickangle=-45,
-        tickformat="%b %Y",
-        dtick="M6",
+        tickmode="array",
+        tickvals=tickvals,
+        ticktext=ticktext,
         showgrid=False,
         zeroline=False,
         showline=False,
@@ -173,7 +257,7 @@ def update_graph(_):
         spikethickness=1,
         rangeslider=dict(visible=False),
         type="date",
-        tickmode="linear",
+        tickformat=None,
     )
 
     fig.update_yaxes(
