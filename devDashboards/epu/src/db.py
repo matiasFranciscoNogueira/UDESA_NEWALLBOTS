@@ -4,7 +4,7 @@ import pandas as pd
 import os
 
 DATA_PATH = Path(os.getenv("DATA_PATH", "/app/data/epu"))
-DEFAULT_DB = DATA_PATH / "database.sqlite"
+DEFAULT_DB = Path("/app/data/epu/db/database.sqlite")
 
 
 def get_db_path(db_path: str | Path | None = None) -> Path:

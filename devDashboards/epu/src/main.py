@@ -31,7 +31,12 @@ PAGE_LANG = os.environ.get("LANG")
 # -------------------------
 # DATABASE PATH
 # -------------------------
-RESULTS_DB = Path("/app/data/epu/data/database.sqlite")
+RESULTS_DB = Path("/app/data/epu/db/database.sqlite")
+if not RESULTS_DB.exists():
+    raise RuntimeError(
+        f"Database not found at {RESULTS_DB}. "
+        "Ensure epu-arg extractor has run successfully."
+    )
 print("Using DB at:", RESULTS_DB)
 
 # -------------------------

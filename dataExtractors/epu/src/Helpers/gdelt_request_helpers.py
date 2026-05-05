@@ -114,7 +114,7 @@ def guardar_df(df: pd.DataFrame, filename: str, folder: Path) -> None:
     Guarda el DataFrame en un archivo CSV.
     """
 
-    full_path = folder / filename
+    full_path = folder / "rawData" / filename
 
     # 🔥 Ensure full path directories exist (including subfolders)
     full_path.parent.mkdir(parents=True, exist_ok=True)

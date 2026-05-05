@@ -12,7 +12,8 @@ services:
     build:
       context: ./dataExtractors/epu
     volumes:
-      - ./sharedData:/app/data
+      - ./sharedData/epu/data/rawData:/app/data/epu/rawData
+      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
       - ./config/gcp:/app/keys:ro
     environment:
       - SHARED_DATA_PATH=/app/data/epu
@@ -25,7 +26,7 @@ services:
   #   build:
   #     context: ./dataExtractors/nowcast
   #   volumes:
-  #     - ./sharedData:/app/data
+  #     -- ./sharedData/epu/raw:/app/data/nowcast/raw
   #     - ./config/gcp:/app/keys:ro
   #   environment:
   #     - SHARED_DATA_PATH=/app/data/nowcast
@@ -55,7 +56,8 @@ services:
     build:
       context: ./prodDashboards/epu
     volumes:
-      - ./sharedData:/app/data:ro
+      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
+      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
     environment:
       - FROM_DOCKER=true
       - URL_PREFIX=/prod/epu/en/
@@ -73,7 +75,8 @@ services:
     build:
       context: ./prodDashboards/epu
     volumes:
-      - ./sharedData:/app/data:ro
+      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
+      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
     environment:
       - FROM_DOCKER=true
       - URL_PREFIX=/prod/epu/es/
@@ -134,7 +137,8 @@ services:
       - LANG=EN
     volumes:
       - ./devDashboards/epu:/app
-      - ./sharedData:/app/data:ro
+      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
+      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
       - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
       - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
     depends_on:
@@ -156,7 +160,8 @@ services:
       - LANG=ES
     volumes:
       - ./devDashboards/epu:/app
-      - ./sharedData:/app/data:ro
+      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
+      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
       - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
       - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
     depends_on:
@@ -178,7 +183,7 @@ services:
       - LANG=EN
     volumes:
       - ./devDashboards/nowcast:/app
-      - ./sharedData:/app/data:ro
+      - ./sharedData:/app/data
     networks:
       - all-bots-net
     restart: unless-stopped
@@ -196,7 +201,7 @@ services:
       - LANG=ES
     volumes:
       - ./devDashboards/nowcast:/app
-      - ./sharedData:/app/data:ro
+      - ./sharedData:/app/data
     networks:
       - all-bots-net
     restart: unless-stopped

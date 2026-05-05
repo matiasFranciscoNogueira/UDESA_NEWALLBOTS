@@ -16,8 +16,10 @@ import Helpers.gdelt_request_helpers as Helpers
 # 🔥 NEW: BUILD SQLITE FROM EXCEL
 # -------------------------
 def build_sqlite_from_excel(store_dir_path: Path):
-    excel_path = store_dir_path / "all_subcategories_compare.xlsx"
-    db_path = store_dir_path / "database.sqlite"
+    excel_path = store_dir_path / "rawData" / "all_subcategories_compare.xlsx"
+    db_path = store_dir_path / "runtimeDb" / "database.sqlite"
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not excel_path.exists():
         print("⚠️ Excel not found → skipping DB creation")
@@ -105,7 +107,8 @@ if __name__ == "__main__":
     if results_file.exists():
         print("📊 Joining subcategory results...")
 
-        output_path = store_dir_path / "all_subcategories_compare.xlsx"
+        output_path = store_dir_path / "rawData" / "all_subcategories_compare.xlsx"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         join_and_save_subcategories_compare(country=country, output_path=output_path)
 
         # 🔥 NEW: create SQLite DB

@@ -12,7 +12,36 @@ def run_query_and_update_data(
     run_query: bool = True
 ):
     BASE_DIR = Path(__file__).resolve().parent
-    KEY_PATH = BASE_DIR.parent / "keys" / "project-60200dfd-09f6-41da-854-53a231b07325.json"
+
+    def resolve_key_path():
+        # 1️⃣ Prefer explicit env var
+        env_path = os.getenv("GCP_KEY_PATH")
+        if env_path:
+            path = Path(env_path)
+            if not path.exists():
+                raise FileNotFoundError(f"GCP_KEY_PATH does not exist: {path}")
+            return path
+
+        # 2️⃣ Fallback: auto-detect a single JSON in /app/keys
+        key_dir = BASE_DIR.parent / "keys"
+
+        json_files = list(key_dir.glob("*.json"))
+
+        if len(json_files) == 0:
+            raise FileNotFoundError(f"No JSON key found in {key_dir}")
+
+        if len(json_files) > 1:
+            raise RuntimeError(
+                f"Multiple JSON keys found in {key_dir}: {json_files}. "
+                "Set GCP_KEY_PATH explicitly."
+            )
+
+        return json_files[0]
+
+
+    KEY_PATH = resolve_key_path()
+    print(f"🔑 Using GCP key: {KEY_PATH}")
+
     client = bigquery.Client.from_service_account_json(str(KEY_PATH))
 
     # -------------------------
