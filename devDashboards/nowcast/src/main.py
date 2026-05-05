@@ -16,22 +16,24 @@ sys.path.append("/shared")
 # Importar el generador de HTML (mismo directorio)
 sys.path.insert(0, str(Path(__file__).parent))
 
+raw_lang = os.environ.get("LANG", "EN").upper()
+
+if raw_lang.startswith("ES"):
+    os.environ["APP_LANG"] = "ES"
+else:
+    os.environ["APP_LANG"] = "EN"
+
+# 🔥 IMPORT AFTER setting env
 from make_nowcast_history_html import (
     read_nowcast_excel,
     build_nowcast_figure,
     build_legend_items,
-    make_post_script
+    make_post_script,
+    t
 )
 
-raw_lang = os.environ.get("LANG", "EN").upper()
-
-from make_nowcast_history_html import t
-
-if raw_lang.startswith("ES"):
-    APP_LANG = "ES"
-else:
-    APP_LANG = "EN"
-from make_nowcast_history_html import t
+# optional local var
+APP_LANG = os.environ["APP_LANG"]
 
 import plotly.io as pio
 
@@ -92,7 +94,7 @@ def generate_html():
     <html>
     <head>
         <meta charset="utf-8">
-        <title>Nowcast</title>
+        <title>{t("nowcast")}</title>
 
         <style>
             html, body {{
@@ -178,11 +180,11 @@ def generate_html():
     <div id="app-shell">
         <div id="header">
             <div id="header-left">
-                Nowcast ({APP_LANG})
+                {t("nowcast")} ({APP_LANG})
             </div>
 
             <div id="header-controls">
-                <button id="filter-btn">Filters</button>
+                <button id="filter-btn">{t("filters")}</button>
             </div>
         </div>
 

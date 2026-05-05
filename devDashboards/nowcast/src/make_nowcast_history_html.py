@@ -37,14 +37,34 @@ TRANSLATIONS = {
         "indec_published": "INDEC (Published)",
         "indec_revised": "INDEC (Revised)",
         "rem": "REM",
-        "edit": "Choose KPIs"
+        "edit": "Choose KPIs",
+        "all_on": "All on",
+        "all_off": "All off",
+        "only_now": "Only now",
+        "search": "Search...",
+        "from": "From:",
+        "to": "To:",
+        "group": "group",
+        "series": "Series",
+        "bands": "Confidence bands",
+        "filters": "Filters"
     },
     "ES": {
         "nowcast": "Nowcast",
         "indec_published": "INDEC (Publicado)",
         "indec_revised": "INDEC (Revisado)",
         "rem": "REM",
-        "edit": "Editar Indicadores"
+        "edit": "Editar Indicadores",
+        "all_on": "Todos",
+        "all_off": "Ninguno",
+        "only_now": "Solo Nowcast",
+        "search": "Buscar...",
+        "from": "Desde:",
+        "to": "Hasta:",
+        "group": "grupo",
+        "series": "Series",
+        "bands": "Bandas de confianza",
+        "filters": "Filtros"
     }
 }
 
@@ -427,10 +447,10 @@ def build_legend_items(fig: go.Figure) -> list:
             continue
 
         name = str(name)
-        if APP_LANG == "ES":
-            group = "Bandas de confianza" if name in band_names else "Series"
+        if name in band_names:
+            group = t("bands")
         else:
-            group = "Confidence bands" if name in band_names else "Series"
+            group = t("series")
 
         # swatch color
         color = None
@@ -460,7 +480,10 @@ def build_legend_items(fig: go.Figure) -> list:
         )
 
     # Order: group first, then rank, then name
-    group_order = {"Series": 0, "Confidence bands": 1}
+    group_order = {
+        t("series"): 0,
+        t("bands"): 1
+    }
     items.sort(key=lambda d: (group_order.get(d["group"], 9), d["rank"], d["name"]))
     return items
 
@@ -1098,14 +1121,13 @@ def make_post_script(items: list) -> str:
   })();
 """.replace("__ITEMS_JSON__", items_json) \
 .replace("__EDIT_LABEL__", t("edit")) \
-.replace("__ALL_ON__", "Todos" if APP_LANG=="ES" else "All on") \
-.replace("__ALL_OFF__", "Ninguno" if APP_LANG=="ES" else "All off") \
-.replace("__ONLY_NOW__", "Solo Nowcast" if APP_LANG=="ES" else "Only now") \
-.replace("__SEARCH__", "Buscar..." if APP_LANG=="ES" else "Search...") \
-.replace("__FROM__", "Desde:" if APP_LANG=="ES" else "From:") \
-.replace("__TO__", "Hasta:" if APP_LANG=="ES" else "To:") \
-.replace("__GROUP__", "grupo" if APP_LANG=="ES" else "group") \
-.replace("__LANG__", APP_LANG)
+.replace("__ALL_ON__", t("all_on"))  \
+.replace("__ALL_OFF__", t("all_off"))  \
+.replace("__ONLY_NOW__", t("only_now"))  \
+.replace("__SEARCH__", t("search"))  \
+.replace("__FROM__", t("from"))  \
+.replace("__TO__", t("to"))  \
+.replace("__GROUP__", t("group"))
 
     return post_script
 
