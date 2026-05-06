@@ -5,6 +5,34 @@
 (function () {
   'use strict';
 
+  var path = window.location.pathname.toLowerCase();
+  var LANG = document.documentElement.lang || "EN";
+
+  var T = {
+    EN: {
+      FROM: "From",
+      TO: "To",
+      CHOOSE_KPI: "Choose KPIs",
+      SEARCH: "Search...",
+      ALL_ON: "All on",
+      ALL_OFF: "All off",
+      SIX_MONTHS: "6m",
+      YTD: "YTD",
+      ALL: "All"
+    },
+    ES: {
+      FROM: "Desde",
+      TO: "Hasta",
+      CHOOSE_KPI: "Editar Indicadores",
+      SEARCH: "Buscar...",
+      ALL_ON: "Activar todo",
+      ALL_OFF: "Desactivar todo",
+      SIX_MONTHS: "6m",
+      YTD: "YTD",
+      ALL: "Todo"
+    }
+  }[LANG];
+
   var GID = 'epu-graph';
   var PANEL_ID = 'cb-epu-panel';
   var DATEPICKER_ID = 'cb-epu-datepicker';
@@ -80,10 +108,10 @@
     var st = doc.createElement('style');
     st.id = STYLE_ID;
     st.textContent =
-      '.cb-panel{position:absolute;top:52px;left:443px;z-index:50;width:230px;max-width:calc(100% - 20px);background:rgba(255,255,255,0.90);border:1px solid rgba(0,0,0,0.14);box-shadow:0 8px 20px rgba(0,0,0,0.10);border-radius:12px;padding:8px;font-family:Helvetica,Arial,sans-serif;color:#111;user-select:none;}' +
+      '.cb-panel{position:absolute;top:calc(100% + 6px);left:0;width:230px;background:#fff;z-index:9999;}' +
       '.cb-header{display:flex;align-items:center;gap:6px;cursor:move;margin-bottom:0;}' +
       '.cb-grip{font-size:18px;color:#aaa;cursor:move;padding:0 4px;flex-shrink:0;line-height:1;user-select:none;}' +
-      '.cb-editbtn{font-size:12px;font-weight:700;padding:4px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.14);background:rgba(255,255,255,0.85);cursor:pointer;flex:1;}' +
+      '.cb-editbtn{font-size:12px;font-weight:700;padding:4px 10px;border-radius:10px;border:1px solid rgba(0,0,0,0.14);background:rgba(255,255,255,0.85);cursor:pointer; width: 230px; flex: 0 0 auto;}' +
       '.cb-editbtn:hover{background:rgba(255,255,255,1);}' +
       '.cb-body{margin-top:8px;}' +
       '.cb-actions{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 8px 0;}' +
@@ -115,6 +143,13 @@
     return x;
   }
 
+  function wrapControl(child) {
+    var box = document.createElement('div');
+    box.className = 'control-block';
+    box.appendChild(child);
+    return box;
+}
+
   // ─── Sync estado de checkboxes ──────────────────────────────────────────────
 
   function setBoxState(boxEl, on) {
@@ -137,25 +172,40 @@
 
   // ─── Date picker overlay ─────────────────────────────────────────────────────
 
-  function buildDatePicker(gd) {
-    var initRange = ((gd.layout || {}).xaxis || {}).range || [];
-    var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
-    var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
+  function buildDatePicker(gd, topContainer) {
+    var xDataMin = null;
+    var xDataMax = null;
+
+    if (gd.data && gd.data.length) {
+      var allX = [];
+
+      gd.data.forEach(function(trace) {
+        if (trace.x) allX = allX.concat(trace.x);
+      });
+
+      allX = allX.map(function(d) { return new Date(d); })
+                .sort(function(a, b) { return a - b; });
+
+      if (allX.length) {
+        xDataMin = allX[0];
+        xDataMax = allX[allX.length - 1];
+      }
+    }
 
     var dpDiv = el('div', {
       id: DATEPICKER_ID,
       style:
-        'position:absolute; top:52px; left:78px; display:flex; align-items:center; ' +
-        'background:rgba(255,255,255,0.88); border-radius:6px; padding:4px 8px; z-index:10; ' +
+        'display:flex; align-items:center; gap:6px; ' +
+        'background:rgba(255,255,255,0.88); border-radius:6px; padding:4px 8px; ' +
         'font-family:Helvetica,Arial,sans-serif;'
     });
 
-    var fromSpan = el('span', { style: 'font-size:13px; color:#555; margin-right:4px;' }, 'From:');
+    var fromSpan = el('span', { style: 'font-size:13px; color:#555; margin-right:4px;' }, T.FROM + ':');
     var fromInput = el('input', {
       type: 'date',
       style: 'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'
     });
-    var toSpan = el('span', { style: 'font-size:13px; color:#555; margin:0 4px 0 10px;' }, 'To:');
+    var toSpan = el('span', { style: 'font-size:13px; color:#555; margin:0 4px 0 10px;' }, T.TO + ':');
     var toInput = el('input', {
       type: 'date',
       style: 'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'
@@ -165,14 +215,152 @@
     dpDiv.appendChild(fromInput);
     dpDiv.appendChild(toSpan);
     dpDiv.appendChild(toInput);
-    gd.appendChild(dpDiv);
+
+    if (xDataMin && xDataMax) {
+      var minStr = xDataMin.toISOString().slice(0,10);
+      var maxStr = xDataMax.toISOString().slice(0,10);
+
+      fromInput.min = minStr;
+      fromInput.max = maxStr;
+      toInput.min = minStr;
+      toInput.max = maxStr;
+    }
+
+    // ✅ Default values (THIS FIXES YOUR ISSUE)
+    fromInput.value = xDataMin.toISOString().slice(0,10);
+    toInput.value   = xDataMax.toISOString().slice(0,10);
+
+    var quickWrap = el('div', {
+      style: 'display:flex; gap:6px; margin-left:10px;'
+    });
+
+    function setRange(start, end, dtick) {
+      fromInput.value = start.toISOString().slice(0,10);
+      toInput.value = end.toISOString().slice(0,10);
+
+      var update = {
+        "xaxis.range[0]": start.toISOString(),
+        "xaxis.range[1]": end.toISOString()
+      };
+
+      if (dtick) {
+        update["xaxis.dtick"] = dtick;
+      }
+
+      Plotly.relayout(gd, update);
+    }
+
+    // 6 MONTHS
+    quickWrap.appendChild(el('button', {
+      style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
+    }, T.SIX_MONTHS)).onclick = function () {
+      var end = xDataMax ? new Date(xDataMax) : null;
+      if (!end || !xDataMin) return;
+
+      var target = new Date(end);
+      target.setMonth(target.getMonth() - 6);
+
+      // Find closest available date >= target
+      var allX = [];
+
+      gd.data.forEach(function(trace) {
+        if (trace.x) allX = allX.concat(trace.x);
+      });
+
+      allX = allX.map(function(d) { return new Date(d); })
+                .sort(function(a, b) { return a - b; });
+
+      var start = allX[0];
+
+      for (var i = 0; i < allX.length; i++) {
+        if (allX[i] >= target) {
+          start = allX[i];
+          break;
+        }
+      }
+
+      // Clamp safety
+      if (start < xDataMin) start = new Date(xDataMin);
+
+      setRange(start, end, "M1");
+    };
+
+    // YTD
+    quickWrap.appendChild(el('button', {
+      style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
+    }, T.YTD)).onclick = function () {
+      var end = xDataMax ? new Date(xDataMax) : null;
+      if (!end || !xDataMin) return;
+
+      // Start = Jan 1 of the YEAR OF LAST DATA (not current year)
+      var target = new Date(end.getFullYear(), 0, 1);
+
+      // Build dataset index (same as 6m)
+      var allX = [];
+
+      gd.data.forEach(function(trace) {
+        if (trace.x) allX = allX.concat(trace.x);
+      });
+
+      allX = allX.map(function(d) { return new Date(d); })
+                .sort(function(a, b) { return a - b; });
+
+      // Find first available date >= Jan 1
+      var start = allX[0];
+
+      for (var i = 0; i < allX.length; i++) {
+        if (allX[i] >= target) {
+          start = allX[i];
+          break;
+        }
+      }
+
+      // Clamp safety
+      if (start < xDataMin) start = new Date(xDataMin);
+
+      setRange(start, end, "M1");
+    };
+
+    // ALL
+    quickWrap.appendChild(el('button', {
+      style: 'font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid #ccc; cursor:pointer;'
+    }, T.ALL)).onclick = function () {
+      if (!xDataMin || !xDataMax) return;
+
+      // Reset inputs
+      fromInput.value = xDataMin.toISOString().slice(0,10);
+      toInput.value   = xDataMax.toISOString().slice(0,10);
+
+      // Reset graph
+      Plotly.relayout(gd, {
+        "xaxis.range[0]": xDataMin.toISOString(),
+        "xaxis.range[1]": xDataMax.toISOString(),
+        "xaxis.dtick": "M6"   // 🔥 quarterly ticks for full range
+      });
+    };
+
+    dpDiv.appendChild(quickWrap);
+    topContainer.appendChild(wrapControl(dpDiv));
 
     function applyDateRange() {
-      var from = fromInput.value;
-      var to = toInput.value;
+      var from = fromInput.value ? new Date(fromInput.value) : null;
+      var to = toInput.value ? new Date(toInput.value) : null;
+
+      if (!from || !to || !xDataMin || !xDataMax) return;
+
+      // Clamp to dataset bounds
+      if (from < xDataMin) from = new Date(xDataMin);
+      if (to > xDataMax) to = new Date(xDataMax);
+
+      // Prevent inverted range
+      if (from > to) from = new Date(to);
+
+      fromInput.value = from.toISOString().slice(0,10);
+      toInput.value = to.toISOString().slice(0,10);
+
       Plotly.relayout(gd, {
-        'xaxis.range[0]': from || xDataMin,
-        'xaxis.range[1]': to || xDataMax,
+        "xaxis.range[0]": from.toISOString(),
+        "xaxis.range[1]": to.toISOString()
       });
     }
 
@@ -181,40 +369,50 @@
   }
 
   // ─── Construir panel ────────────────────────────────────────────────────────
-
   function buildPanel(gd, items) {
-    if (!gd.style.position || gd.style.position === 'static') {
-      gd.style.position = 'relative';
-    }
 
     var sync = function () { syncAll(gd, items); };
 
-    // Date picker (a la izquierda, misma altura que el panel Edit)
+    var topContainer = document.getElementById('epu-top-container');
+
+    if (!topContainer) {
+      topContainer = el('div', {
+        id: 'epu-top-container',
+        style: 'display:flex; flex-direction:column; gap:10px;'
+      });
+
+      window.SHELL.controlsContainer.appendChild(topContainer);
+    }
+
+    gd.parentNode.style.width = '100%';
+    gd.parentNode.style.maxWidth = '100%';
+
+    gd.style.width = '100%';
+    gd.style.maxWidth = '100%';
+    gd.style.height = '100%';
+    gd.style.display = 'block';
+
+    // ✅ THEN use it
     if (!gd.querySelector('#' + DATEPICKER_ID)) {
-      buildDatePicker(gd);
+      buildDatePicker(gd, topContainer);
     }
 
     var panel = el('div', { id: PANEL_ID, class: 'cb-panel' });
 
     // Header (drag handle) con botón Edit
-    var header = el('div', { class: 'cb-header' });
-    var grip = el('span', { class: 'cb-grip' }, '⠿');
-    var editBtn = el('button', { class: 'cb-editbtn', type: 'button' }, 'Editar Indicadores');
-    header.appendChild(grip);
-    header.appendChild(editBtn);
-    panel.appendChild(header);
+    var editBtn = el('button', { class: 'cb-editbtn', type: 'button' }, T.CHOOSE_KPI);
 
     // Cuerpo colapsable (empieza oculto)
     var body = el('div', { class: 'cb-body', style: 'display:none;' });
 
     // Search
-    var search = el('input', { class: 'cb-search', type: 'text', placeholder: 'Buscar...' });
+    var search = el('input', { class: 'cb-search', type: 'text', placeholder: T.SEARCH });
     body.appendChild(search);
 
     // Botones
     var actions = el('div', { class: 'cb-actions' });
-    var btnOn  = el('button', { class: 'cb-btn', type: 'button' }, 'All on');
-    var btnOff = el('button', { class: 'cb-btn', type: 'button' }, 'All off');
+    var btnOn = el('button', { class: 'cb-btn', type: 'button' }, T.ALL_ON);
+    var btnOff = el('button', { class: 'cb-btn', type: 'button' }, T.ALL_OFF);
     actions.appendChild(btnOn);
     actions.appendChild(btnOff);
     body.appendChild(actions);
@@ -251,7 +449,15 @@
 
     body.appendChild(groupsBox);
     panel.appendChild(body);
-    gd.appendChild(panel);
+
+    var btnWrap = el('div', {
+      style: 'position: relative; display: inline-block;'
+    });
+
+    btnWrap.appendChild(editBtn);
+    btnWrap.appendChild(panel);
+
+    topContainer.appendChild(wrapControl(btnWrap));
 
     // Toggle Edit (no propaga pointerdown para no activar drag)
     editBtn.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
@@ -278,39 +484,18 @@
 
     // Estado inicial
     syncAll(gd, items);
+    if (!gd._initialTickFix) {
+      gd._initialTickFix = true;
 
-    // ─── Drag ───────────────────────────────────────────────────────────────
-    var dragging = false, offX = 0, offY = 0;
-
-    header.addEventListener('pointerdown', function (e) {
-      e.preventDefault();
-      dragging = true;
-      var rectG = gd.getBoundingClientRect();
-      var rectP = panel.getBoundingClientRect();
-      panel.style.right = 'auto';
-      panel.style.bottom = 'auto';
-      panel.style.left = (rectP.left - rectG.left) + 'px';
-      panel.style.top  = (rectP.top  - rectG.top)  + 'px';
-      offX = e.clientX - rectP.left;
-      offY = e.clientY - rectP.top;
-      header.setPointerCapture(e.pointerId);
-    });
-
-    header.addEventListener('pointermove', function (e) {
-      if (!dragging) return;
-      var rectG = gd.getBoundingClientRect();
-      var rectP = panel.getBoundingClientRect();
-      var pad = 6;
-      var L = Math.max(pad, Math.min(e.clientX - rectG.left - offX, rectG.width  - rectP.width  - pad));
-      var T = Math.max(pad, Math.min(e.clientY - rectG.top  - offY, rectG.height - rectP.height - pad));
-      panel.style.left = L + 'px';
-      panel.style.top  = T + 'px';
-    });
-
-    header.addEventListener('pointerup', function (e) {
-      dragging = false;
-      try { header.releasePointerCapture(e.pointerId); } catch (_) {}
-    });
+      gd.once('plotly_afterplot', function () {
+        Plotly.relayout(gd, {
+          'margin.b': 120,
+          'xaxis.automargin': true,
+          'yaxis.automargin': true
+        });
+      });
+      
+    }
   }
 
   // ─── Init ────────────────────────────────────────────────────────────────────
@@ -327,19 +512,34 @@
 
     injectStyles(document);
 
-    if (!gd.querySelector('#' + PANEL_ID)) {
+    if (!document.getElementById('epu-top-container')) {
       buildPanel(gd, items);
     }
 
     if (!gd._epuLegendAttached) {
       gd._epuLegendAttached = true;
       gd.on('plotly_afterplot', function () {
-        if (!gd.querySelector('#' + PANEL_ID)) buildPanel(gd, buildItems(gd.data));
-        else syncAll(gd, buildItems(gd.data));
+        if (!document.getElementById('epu-top-container')) {
+          buildPanel(gd, buildItems(gd.data));
+        } else {
+          syncAll(gd, buildItems(gd.data));
+        }
       });
     }
 
     return true;
+  }
+  setTimeout(function () {
+    translateFilterButton();
+  }, 150);
+
+  function translateFilterButton() {
+    var btn = document.getElementById("menu-toggle");
+    if (!btn) return;
+
+    var LANG = document.documentElement.lang || "EN";
+
+    btn.textContent = LANG === "ES" ? "☰ Filtros" : "☰ Filters";
   }
 
   var obs = new MutationObserver(function () { if (init()) obs.disconnect(); });

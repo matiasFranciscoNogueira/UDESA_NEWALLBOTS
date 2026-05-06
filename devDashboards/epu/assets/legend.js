@@ -529,6 +529,18 @@
 
     return true;
   }
+  setTimeout(function () {
+    translateFilterButton();
+  }, 150);
+
+  function translateFilterButton() {
+    var btn = document.getElementById("menu-toggle");
+    if (!btn) return;
+
+    var LANG = document.documentElement.lang || "EN";
+
+    btn.textContent = LANG === "ES" ? "☰ Filtros" : "☰ Filters";
+  }
 
   var obs = new MutationObserver(function () { if (init()) obs.disconnect(); });
   obs.observe(document.body, { childList: true, subtree: true });

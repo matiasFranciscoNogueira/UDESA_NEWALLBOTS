@@ -26,7 +26,7 @@ COPY assets ./assets
 # Baseline Excel: siembra el volumen vacío en el primer deploy.
 # Docker copia el contenido de /app/data al volumen si este está vacío.
 # El bot EPU lo sobreescribirá cuando genere datos nuevos.
-COPY data/all_subcategories_compare.xlsx /app/data/all_subcategories_compare.xlsx
+# COPY sharedData/epu/data/all_subcategories_compare.xlsx /app/data/epu/data/all_subcategories_compare.xlsx
 
 # Entrypoint: importa Excel al arrancar, luego inicia cron + dashboard
 COPY entrypoint.sh ./entrypoint.sh

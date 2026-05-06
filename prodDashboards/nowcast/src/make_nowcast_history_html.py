@@ -24,6 +24,52 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
+# ============================================================
+# 🌍 LANGUAGE
+# ============================================================
+import os
+
+APP_LANG = os.environ.get("APP_LANG", "EN").upper()
+
+TRANSLATIONS = {
+    "EN": {
+        "nowcast": "Nowcast",
+        "indec_published": "INDEC (Published)",
+        "indec_revised": "INDEC (Revised)",
+        "rem": "REM",
+        "edit": "Choose KPIs",
+        "all_on": "All on",
+        "all_off": "All off",
+        "only_now": "Only now",
+        "search": "Search...",
+        "from": "From:",
+        "to": "To:",
+        "group": "group",
+        "series": "Series",
+        "bands": "Confidence bands",
+        "filters": "☰ Filters"
+    },
+    "ES": {
+        "nowcast": "Nowcast",
+        "indec_published": "INDEC (Publicado)",
+        "indec_revised": "INDEC (Revisado)",
+        "rem": "REM",
+        "edit": "Editar Indicadores",
+        "all_on": "Todos",
+        "all_off": "Ninguno",
+        "only_now": "Solo Nowcast",
+        "search": "Buscar...",
+        "from": "Desde:",
+        "to": "Hasta:",
+        "group": "grupo",
+        "series": "Series",
+        "bands": "Bandas de confianza",
+        "filters": "☰ Filtros"
+    }
+}
+
+def t(key):
+    return TRANSLATIONS.get(APP_LANG, {}).get(key, key)
 
 # ============================================================
 # DASHBOARD-LIKE SETTINGS
@@ -205,6 +251,12 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
         rem = rem[rem["PlotDate"].notna() & (rem["PlotDate"] >= anchor_date)].copy()
 
     ticks = ticks_all.copy()
+    def format_month(dt):
+      dt = pd.to_datetime(dt)
+      if APP_LANG == "ES":
+          months = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"]
+          return f"{months[dt.month-1]} {dt.year}"
+      return dt.strftime("%b %Y")
     if "QuarterEnd" in ticks.columns:
         ticks = ticks[(ticks["QuarterEnd"] == anchor_qend) | (ticks["QuarterEnd"] >= START_TQ)].copy()
 
@@ -253,7 +305,7 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
             x=df["Date"],
             y=pd.to_numeric(df["Nowcast"], errors="coerce"),
             mode="lines",
-            name="Nowcast",
+            name=t("nowcast"),
             line=dict(width=2.4, color="black"),
             legendrank=10,
             hovertemplate="%{x|%Y-%m-%d}<br><b>Nowcast</b>: %{y:.2f}<extra></extra>",
@@ -270,11 +322,11 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
                 x=ip["PlotDate"],
                 y=ip["INDEC_Published"],
                 mode="lines+markers",
-                name="INDEC (Published)",
+                name=t("indec_published"),
                 line=dict(width=1.7, color=indec_line),
                 marker=dict(symbol="square", size=8, color=indec_fill, line=dict(width=1.1, color=indec_line)),
                 legendrank=20,
-                hovertemplate="%{x|%Y-%m-%d}<br><b>INDEC (Published)</b>: %{y:.2f}<extra></extra>",
+                hovertemplate=f"%{{x|%Y-%m-%d}}<br><b>{t('indec_published')}</b>: %{{y:.2f}}<extra></extra>",
             )
         )
 
@@ -289,10 +341,10 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
                     x=ir["PlotDate"],
                     y=ir["INDEC_Revised"],
                     mode="markers",
-                    name="INDEC (Revised)",
+                    name=t("indec_revised"),
                     marker=dict(symbol="diamond", size=9, color="rgba(0,0,0,0)", line=dict(width=2, color=indec_line)),
                     legendrank=30,
-                    hovertemplate="%{x|%Y-%m-%d}<br><b>INDEC (Revised)</b>: %{y:.2f}<extra></extra>",
+                    hovertemplate=f"%{{x|%Y-%m-%d}}<br><b>{t('indec_revised')}</b>: %{{y:.2f}}<extra></extra>",
                 )
             )
 
@@ -306,7 +358,7 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
                 x=rr["PlotDate"],
                 y=rr["REM"],
                 mode="lines+markers",
-                name="REM",
+                name=t("rem"),
                 line=dict(width=1.2, color=rem_gray, dash="dash"),
                 marker=dict(symbol="circle", size=6, color=rem_gray, line=dict(width=1, color=rem_gray)),
                 legendrank=40,
@@ -314,9 +366,24 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
             )
         )
 
-    # Ticks
-    tickvals = as_py_datetimes(ticks["TickDate"]) if ("TickDate" in ticks.columns and len(ticks)) else []
-    ticktext = ticks["TickLabel"].astype(str).tolist() if ("TickLabel" in ticks.columns and len(ticks)) else []
+    # Ticks (clean + safe)
+    if "TickDate" in ticks.columns and len(ticks):
+        valid_ticks = ticks["TickDate"].dropna()
+        # Use full monthly dates from df (not ticks table)
+        all_dates = pd.to_datetime(df["Date"]).dropna().sort_values()
+
+        #force monthly frequency (THIS is the key)
+        monthly_dates = pd.date_range(
+            start=all_dates.min(),
+            end=all_dates.max(),
+            freq="MS"  # Month Start → clean spacing
+        )
+
+        tickvals = [d.to_pydatetime() for d in monthly_dates]
+        ticktext = [format_month(d) for d in monthly_dates]
+    else:
+        tickvals = []
+        ticktext = []
 
     # Professional layout
     unit = meta.get("Unit", "").strip()
@@ -332,8 +399,9 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
         xaxis=dict(
             title=None,
             range=[xmin, xmax],
-            tickmode="auto",
-            tickformat="%b %Y",
+            tickmode="array",
+            tickvals=tickvals,
+            ticktext=ticktext,
             nticks=20,
             tickangle=-45,
             showgrid=False,
@@ -358,58 +426,6 @@ def build_nowcast_figure(bundle: dict) -> go.Figure:
         ),
     )
 
-    # if subtitle:
-    #     fig.add_annotation(
-    #         xref="paper",
-    #         yref="paper",
-    #         x=0.01,
-    #         y=1.06,
-    #         xanchor="left",
-    #         yanchor="top",
-    #         text=subtitle,
-    #         showarrow=False,
-    #         font=dict(size=12, color="rgba(0,0,0,0.55)"),
-    #     )
-
-    # Anchor vertical line
-    # fig.add_vline(
-    #     x=anchor_date,
-    #     line_width=1,
-    #     line_dash="dot",
-    #     line_color="rgba(0,0,0,0.25)",
-    # )
-    # fig.add_annotation(
-    #     x=anchor_date,
-    #     yref="paper",
-    #     y=1.02,
-    #     text=f"Anchor: {anchor_date.strftime('%Y-%m-%d')}",
-    #     showarrow=False,
-    #     font=dict(size=11, color="rgba(0,0,0,0.55)"),
-    #     xanchor="left",
-    #     yanchor="bottom",
-    #     bgcolor="rgba(255,255,255,0.6)",
-    #     bordercolor="rgba(0,0,0,0.10)",
-    #     borderwidth=1,
-    #     borderpad=3,
-    # )
-
-    # Tip (lo movemos a panel custom también, pero lo dejamos como guía visual)
-    # fig.add_annotation(
-    #     xref="paper",
-    #     yref="paper",
-    #     x=0.01,
-    #     y=0.99,
-    #     xanchor="left",
-    #     yanchor="top",
-    #     text="Tip: usá el panel de series (checkbox) para mostrar u ocultar. Doble click para aislar.",
-    #     showarrow=False,
-    #     font=dict(size=12, color="rgba(0,0,0,0.55)"),
-    #     bgcolor="rgba(255,255,255,0.65)",
-    #     bordercolor="rgba(0,0,0,0.10)",
-    #     borderwidth=1,
-    #     borderpad=4,
-    # )
-
     fig.update_xaxes(showline=False)
     fig.update_yaxes(showline=False)
 
@@ -431,7 +447,10 @@ def build_legend_items(fig: go.Figure) -> list:
             continue
 
         name = str(name)
-        group = "Confidence bands" if name in band_names else "Series"
+        if name in band_names:
+            group = t("bands")
+        else:
+            group = t("series")
 
         # swatch color
         color = None
@@ -461,7 +480,10 @@ def build_legend_items(fig: go.Figure) -> list:
         )
 
     # Order: group first, then rank, then name
-    group_order = {"Series": 0, "Confidence bands": 1}
+    group_order = {
+        t("series"): 0,
+        t("bands"): 1
+    }
     items.sort(key=lambda d: (group_order.get(d["group"], 9), d["rank"], d["name"]))
     return items
 
@@ -473,559 +495,672 @@ def make_post_script(items: list) -> str:
     items_json = json.dumps(items, ensure_ascii=False)
 
     post_script = r"""
-(function(){
-  var gd = document.getElementById('{plot_id}');
-  if(!gd) return;
+  (function(){
+    var gd = document.getElementById('{plot_id}');
+    var LANG = "__LANG__";
+    if(!gd) return;
+    document.documentElement.style.height = '100%';
+    document.body.style.height = '100%';
+    document.body.style.margin = '0';
 
-  var ITEMS = __ITEMS_JSON__;
-  var doc = gd.ownerDocument;
+    // =========================
+    // SHELL-COMPATIBLE MODE
+    // =========================
 
-  function safeKey(s){ return String(s).replace(/[^a-z0-9_-]/gi,'_'); }
+    // Make body clean (iframe-friendly)
+    document.documentElement.style.height = '100%';
+    document.body.style.height = '100%';
+    document.body.style.margin = '0';
+    document.body.style.overflow = 'hidden';
 
-  function el(tag, attrs, html){
-    var x = doc.createElement(tag);
-    if(attrs){
-      Object.keys(attrs).forEach(function(k){
-        if(k === 'style') x.setAttribute('style', attrs[k]);
-        else x.setAttribute(k, attrs[k]);
-      });
-    }
-    if(html !== undefined) x.innerHTML = html;
-    return x;
-  }
-
-  function isVisible(idx){
-    var v = gd.data[idx].visible;
-    return (v === undefined || v === true);
-  }
-
-  function setVisible(idx, on){
-    var newVis = on ? true : 'legendonly';
-    return Plotly.restyle(gd, {visible: newVis}, [idx]);
-  }
-
-  function setMany(indices, on){
-    if(!indices.length) return Promise.resolve();
-    var upd = {visible: []};
-    indices.forEach(function(_){ upd.visible.push(on ? true : 'legendonly'); });
-    return Plotly.restyle(gd, upd, indices);
-  }
-
-  // Aislar / restaurar (trace o grupo)
-  var isolateState = {active:false, saved:null, key:null};
-
-  function snapshotVisible(){
-    return gd.data.map(function(t){
-      return (t.visible === undefined) ? true : t.visible;
-    });
-  }
-
-  function restoreVisible(saved){
-    var indices = [];
-    var update = {visible: []};
-    for(var k=0; k<gd.data.length; k++){
-      indices.push(k);
-      update.visible.push(saved[k]);
-    }
-    return Plotly.restyle(gd, update, indices);
-  }
-
-  function isolate(indices, key){
-    if(isolateState.active && isolateState.key === key){
-      var saved = isolateState.saved;
-      isolateState.active = false;
-      isolateState.saved = null;
-      isolateState.key = null;
-      return restoreVisible(saved);
-    }
-
-    isolateState.active = true;
-    isolateState.saved = snapshotVisible();
-    isolateState.key = key;
-
-    var all = [];
-    var upd = {visible: []};
-    for(var j=0; j<gd.data.length; j++){
-      all.push(j);
-      upd.visible.push(indices.indexOf(j) >= 0 ? true : 'legendonly');
-    }
-    return Plotly.restyle(gd, upd, all);
-  }
-
-  // Insertar panel DENTRO del gráfico (overlay)
-  // aseguramos que el contenedor sea "position: relative"
-  if(!gd.style.position || gd.style.position === 'static'){
+    // Make Plotly fill entire iframe
     gd.style.position = 'relative';
-  }
+    gd.style.width = '100%';
+    gd.style.height = '100%';
+    gd.style.flex = '1';
 
-  // CSS compacto + overlay + scroll interno
-  if(!doc.getElementById('cb-legend-style')){
-    var st = el('style', {id:'cb-legend-style'});
-    st.textContent = `
-      .cb-panel{
-        position: absolute;
-        top: 10px;
-        left: 443px;
-        z-index: 50;
-        width: 230px;
-        max-width: calc(100% - 20px);
-        background: rgba(255,255,255,0.90);
-        border: 1px solid rgba(0,0,0,0.14);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.10);
-        border-radius: 12px;
-        padding: 8px;
-        font-family: Helvetica, Arial, sans-serif;
-        color: #111;
-        user-select: none;
-      }
-      .cb-grip{font-size:18px;color:#aaa;cursor:move;padding:0 4px;flex-shrink:0;line-height:1;user-select:none;}
-      .cb-header{
-        display:flex;
-        align-items:center;
-        gap:6px;
-        margin-bottom: 0;
-        cursor: move;
-      }
-      .cb-editbtn{
-        font-size: 12px;
-        font-weight: 700;
-        padding: 4px 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.14);
-        background: rgba(255,255,255,0.85);
-        cursor: pointer;
-        flex: 1;
-      }
-      .cb-editbtn:hover{ background: rgba(255,255,255,1); }
-      .cb-body{ margin-top: 8px; }
-      .cb-actions{
-        display:flex;
-        gap:6px;
-        flex-wrap: wrap;
-        margin: 6px 0 8px 0;
-      }
-      .cb-btn{
-        font-size: 10px;
-        padding: 5px 7px;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.12);
-        background: rgba(255,255,255,0.85);
-        cursor:pointer;
-      }
-      .cb-btn:hover{
-        background: rgba(255,255,255,1);
-        border-color: rgba(0,0,0,0.18);
-      }
-      .cb-search{
-        width: 100%;
-        box-sizing: border-box;
-        border-radius: 10px;
-        border: 1px solid rgba(0,0,0,0.12);
-        padding: 6px 8px;
-        font-size: 11px;
-        outline: none;
-        background: rgba(255,255,255,0.90);
-      }
-      .cb-groups{
-        margin-top: 8px;
-        display:flex;
-        flex-direction: column;
-        gap: 8px;
-        max-height: 170px;      /* <<< scroll dentro del panel */
-        overflow: auto;
-        padding-right: 4px;
-      }
-      .cb-group{
-        display:flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .cb-group-head{
-        display:flex;
-        align-items:center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        border: 1px solid rgba(0,0,0,0.08);
-        background: rgba(0,0,0,0.03);
-        cursor:pointer;
-      }
-      .cb-group-name{
-        font-size: 11px;
-        font-weight: 700;
-      }
-      .cb-item{
-        display:flex;
-        align-items:center;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        cursor: pointer;
-        border: 1px solid rgba(0,0,0,0.06);
-        background: rgba(255,255,255,0.60);
-      }
-      .cb-item:hover{
-        background: rgba(255,255,255,0.95);
-        border-color: rgba(0,0,0,0.10);
-      }
-      .cb-item.off{
-        opacity: 0.55;
-      }
-      .cb-box{
-        width: 15px;
-        height: 15px;
-        border-radius: 5px;
-        border: 1px solid rgba(0,0,0,0.35);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        line-height: 1;
-        color: white;
-        background: transparent;
-        flex: 0 0 auto;
-      }
-      .cb-box.on{
-        background: rgba(16,185,129,0.95);
-        border-color: rgba(16,185,129,1);
-      }
-      .cb-box.mix{
-        background: rgba(59,130,246,0.95);
-        border-color: rgba(59,130,246,1);
-      }
-      .cb-swatch{
-        width: 11px;
-        height: 11px;
-        border-radius: 4px;
-        border: 1px solid rgba(0,0,0,0.15);
-        flex: 0 0 auto;
-      }
-      .cb-label{
-        font-size: 12px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    `;
-    doc.head.appendChild(st);
-  }
-
-  // Remove previous panel if any
-  var prev = doc.getElementById('cb-panel');
-  if(prev) prev.remove();
-
-  // Panel DOM
-  var panel = el('div', {id:'cb-panel', class:'cb-panel'});
-
-  // Header (drag handle) con botón Editar
-  var header = el('div', {class:'cb-header'});
-  var grip = el('span', {class:'cb-grip'}, '⠿');
-  var editBtn = el('button', {class:'cb-editbtn', type:'button'}, 'Editar Indicadores');
-  header.appendChild(grip);
-  editBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
-  editBtn.addEventListener('click', function(){
-    var body = panel.querySelector('.cb-body');
-    body.style.display = body.style.display === 'none' ? '' : 'none';
-  });
-  header.appendChild(editBtn);
-  panel.appendChild(header);
-
-  // Cuerpo colapsable (empieza oculto)
-  var body = el('div', {class:'cb-body', style:'display:none;'});
-
-  var search = el('input', {class:'cb-search', type:'text', placeholder:'Buscar...'});
-  body.appendChild(search);
-
-  var actions = el('div', {class:'cb-actions'});
-  var btnAllOn = el('button', {class:'cb-btn', type:'button'}, 'All on');
-  var btnAllOff = el('button', {class:'cb-btn', type:'button'}, 'All off');
-  var btnOnlyNow = el('button', {class:'cb-btn', type:'button'}, 'Only now');
-  actions.appendChild(btnAllOn);
-  actions.appendChild(btnAllOff);
-  actions.appendChild(btnOnlyNow);
-  body.appendChild(actions);
-
-  var groupsBox = el('div', {class:'cb-groups'});
-  body.appendChild(groupsBox);
-
-  panel.appendChild(body);
-
-  // Append INSIDE the plot div (overlay within chart)
-  gd.appendChild(panel);
-
-  // ---- Date picker overlay (same height as Edit panel, to its right) ----
-  var dpDiv = el('div', {style:
-    'position:absolute; top:10px; left:78px; display:flex; align-items:center; ' +
-    'background:rgba(255,255,255,0.88); border-radius:6px; padding:4px 8px; z-index:10; ' +
-    'font-family:Helvetica,Arial,sans-serif;'});
-  var fromSpan = el('span', {style:'font-size:13px; color:#555; margin-right:4px;'}, 'From:');
-  var fromInput = el('input', {type:'date',
-    style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
-  var toSpan = el('span', {style:'font-size:13px; color:#555; margin:0 4px 0 10px;'}, 'To:');
-  var toInput = el('input', {type:'date',
-    style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
-  dpDiv.appendChild(fromSpan);
-  dpDiv.appendChild(fromInput);
-  dpDiv.appendChild(toSpan);
-  dpDiv.appendChild(toInput);
-  gd.appendChild(dpDiv);
-
-  var initRange = ((gd.layout || {}).xaxis || {}).range || [];
-  var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
-  var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
-
-  function applyDateRange(){
-    var from = fromInput.value;
-    var to = toInput.value;
     Plotly.relayout(gd, {
-      'xaxis.range[0]': from || xDataMin,
-      'xaxis.range[1]': to || xDataMax,
+      autosize: true
     });
-  }
 
-  fromInput.addEventListener('change', applyDateRange);
-  toInput.addEventListener('change', applyDateRange);
-
-  // Group map
-  var groups = {};
-  ITEMS.forEach(function(it){
-    if(!groups[it.group]) groups[it.group] = [];
-    groups[it.group].push(it);
-  });
-
-  var groupNames = Object.keys(groups);
-  groupNames.sort(function(a,b){
-    var o = {'Series':0,'Confidence bands':1};
-    return (o[a]||9) - (o[b]||9);
-  });
-
-  function setBoxState(boxEl, state){
-    boxEl.classList.remove('on');
-    boxEl.classList.remove('mix');
-    boxEl.textContent = '';
-    if(state === 'on'){
-      boxEl.classList.add('on');
-      boxEl.textContent = '✓';
-    } else if(state === 'mix'){
-      boxEl.classList.add('mix');
-      boxEl.textContent = '−';
+    function el(tag, attrs, html){
+      var x = document.createElement(tag);
+      if(attrs){
+        Object.keys(attrs).forEach(function(k){
+          if(k === 'style') x.setAttribute('style', attrs[k]);
+          else x.setAttribute(k, attrs[k]);
+        });
+      }
+      if(html !== undefined) x.innerHTML = html;
+      return x;
     }
-  }
 
-  function rowState(rowEl, on){
-    var box = rowEl.querySelector('.cb-box');
-    if(on){
-      setBoxState(box, 'on');
-      rowEl.classList.remove('off');
-    } else {
-      setBoxState(box, 'off');
-      rowEl.classList.add('off');
+    var controlsBox = el('div', {class:'filter-box filter-box--controls'});
+    var kpiBox = el('div', {class:'filter-box filter-box--kpis'});
+
+    // Push graph down so controls don’t overlap
+    Plotly.relayout(gd, {
+      margin: { t: 20 }   // space for controls
+    });
+
+    // Attach controls directly to body
+    var filterPanel = document.getElementById('filter-panel');
+
+    if (filterPanel) {
+      var container = el('div', {class:'filters-container'});
+      var shellControls = el('div', {class:'shell-controls'});
+      shellControls.appendChild(controlsBox);
+      shellControls.appendChild(kpiBox);
+      container.appendChild(shellControls);
+      filterPanel.appendChild(container);
     }
-  }
 
-  function groupState(groupItems){
-    var onCount = 0;
-    groupItems.forEach(function(it){
-      if(isVisible(it.i)) onCount += 1;
-    });
-    if(onCount === 0) return 'off';
-    if(onCount === groupItems.length) return 'on';
-    return 'mix';
-  }
+    // Resize after mount
+    function resizePlot() {
+      if (window.Plotly && gd) {
+        Plotly.Plots.resize(gd);
+      }
+    }
 
-  function syncAll(){
-    // rows
-    ITEMS.forEach(function(it){
-      var row = doc.getElementById('cb-item-' + it.i);
-      if(!row) return;
-      rowState(row, isVisible(it.i));
-    });
-    // groups
-    groupNames.forEach(function(g){
-      var gkey = safeKey(g);
-      var headBox = doc.getElementById('cb-group-box-' + gkey);
-      if(!headBox) return;
-      setBoxState(headBox, groupState(groups[g]));
-    });
-  }
+    // initial resize
+    setTimeout(resizePlot, 50);
 
-  function applyFilter(){
-    var q = (search.value || '').trim().toLowerCase();
-    groupNames.forEach(function(g){
-      var gkey = safeKey(g);
-      var anyShown = false;
-      groups[g].forEach(function(it){
-        var row = doc.getElementById('cb-item-' + it.i);
-        if(!row) return;
-        var ok = (!q) || (it.name.toLowerCase().indexOf(q) >= 0);
-        row.style.display = ok ? '' : 'none';
-        if(ok) anyShown = true;
+    // resize on window change
+    window.addEventListener('resize', resizePlot);
+
+    var ITEMS = __ITEMS_JSON__;
+
+    function safeKey(s){ return String(s).replace(/[^a-z0-9_-]/gi,'_'); }
+
+    function isVisible(idx){
+      var v = gd.data[idx].visible;
+      return (v === undefined || v === true);
+    }
+
+    function setVisible(idx, on){
+      var newVis = on ? true : 'legendonly';
+      return Plotly.restyle(gd, {visible: newVis}, [idx]);
+    }
+
+    function setMany(indices, on){
+      if(!indices.length) return Promise.resolve();
+      var upd = {visible: []};
+      indices.forEach(function(_){ upd.visible.push(on ? true : 'legendonly'); });
+      return Plotly.restyle(gd, upd, indices);
+    }
+
+    // Aislar / restaurar (trace o grupo)
+    var isolateState = {active:false, saved:null, key:null};
+
+    function snapshotVisible(){
+      return gd.data.map(function(t){
+        return (t.visible === undefined) ? true : t.visible;
       });
-      var gWrap = doc.getElementById('cb-group-wrap-' + gkey);
-      if(gWrap) gWrap.style.display = anyShown ? '' : 'none';
+    }
+
+    function restoreVisible(saved){
+      var indices = [];
+      var update = {visible: []};
+      for(var k=0; k<gd.data.length; k++){
+        indices.push(k);
+        update.visible.push(saved[k]);
+      }
+      return Plotly.restyle(gd, update, indices);
+    }
+
+    function isolate(indices, key){
+      if(isolateState.active && isolateState.key === key){
+        var saved = isolateState.saved;
+        isolateState.active = false;
+        isolateState.saved = null;
+        isolateState.key = null;
+        return restoreVisible(saved);
+      }
+
+      isolateState.active = true;
+      isolateState.saved = snapshotVisible();
+      isolateState.key = key;
+
+      var all = [];
+      var upd = {visible: []};
+      for(var j=0; j<gd.data.length; j++){
+        all.push(j);
+        upd.visible.push(indices.indexOf(j) >= 0 ? true : 'legendonly');
+      }
+      return Plotly.restyle(gd, upd, all);
+    }
+
+    // Insertar panel DENTRO del gráfico (overlay)
+    // aseguramos que el contenedor sea "position: relative"
+    if(!gd.style.position || gd.style.position === 'static'){
+      gd.style.position = 'relative';
+    }
+
+    // CSS compacto + overlay + scroll interno
+    if(!document.getElementById('cb-legend-style')){
+      var st = el('style', {id:'cb-legend-style'});
+      st.textContent = `
+        .cb-panel{
+          position: relative;
+          width: 100%;
+          background-color: white;
+          z-index: auto;
+          display: block;
+        }
+        .cb-editbtn{
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.14);
+          background: rgba(255,255,255,0.85);
+          cursor: pointer;
+          width: 230px;        /* 👈 match panel */
+          flex: 0 0 auto;      /* 👈 prevent stretching */
+        }
+        .cb-editbtn:hover{ background: rgba(255,255,255,1); }
+        .cb-body{ margin-top: 8px; }
+        .cb-actions{
+          display:flex;
+          gap:6px;
+          flex-wrap: wrap;
+          margin: 6px 0 8px 0;
+        }
+        .cb-btn{
+          font-size: 10px;
+          padding: 5px 7px;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.12);
+          background: rgba(255,255,255,0.85);
+          cursor:pointer;
+        }
+        .cb-btn:hover{
+          background: rgba(255,255,255,1);
+          border-color: rgba(0,0,0,0.18);
+        }
+        .cb-search{
+          width: 100%;
+          box-sizing: border-box;
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.12);
+          padding: 6px 8px;
+          font-size: 11px;
+          outline: none;
+          background: rgba(255,255,255,0.90);
+        }
+        .cb-groups{
+          margin-top: 8px;
+          display:flex;
+          flex-direction: column;
+          gap: 8px;
+          max-height: 170px;      /* <<< scroll dentro del panel */
+          overflow: auto;
+          padding-right: 4px;
+        }
+        .cb-group{
+          display:flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .cb-group-head{
+          display:flex;
+          align-items:center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(0,0,0,0.08);
+          background: rgba(0,0,0,0.03);
+          cursor:pointer;
+        }
+        .cb-group-name{
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .cb-item{
+          display:flex;
+          align-items:center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          cursor: pointer;
+          border: 1px solid rgba(0,0,0,0.06);
+          background: rgba(255,255,255,0.60);
+        }
+        .cb-item:hover{
+          background: rgba(255,255,255,0.95);
+          border-color: rgba(0,0,0,0.10);
+        }
+        .cb-item.off{
+          opacity: 0.55;
+        }
+        .cb-box{
+          width: 15px;
+          height: 15px;
+          border-radius: 5px;
+          border: 1px solid rgba(0,0,0,0.35);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          line-height: 1;
+          color: white;
+          background: transparent;
+          flex: 0 0 auto;
+        }
+        .cb-box.on{
+          background: rgba(16,185,129,0.95);
+          border-color: rgba(16,185,129,1);
+        }
+        .cb-box.mix{
+          background: rgba(59,130,246,0.95);
+          border-color: rgba(59,130,246,1);
+        }
+        .cb-swatch{
+          width: 11px;
+          height: 11px;
+          border-radius: 4px;
+          border: 1px solid rgba(0,0,0,0.15);
+          flex: 0 0 auto;
+        }
+        .cb-label{
+          font-size: 12px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    // Remove previous panel if any
+    var prev = document.getElementById('cb-panel');
+    if(prev) prev.remove();
+
+    // Panel DOM
+    var panel = el('div', {id:'cb-panel', class:'cb-panel'});
+
+    var editBtn = el('button', {class:'cb-editbtn'}, '__EDIT_LABEL__');
+
+    var editLabel = "__EDIT_LABEL__";
+    editBtn.addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+    editBtn.addEventListener('click', function(){
+      var body = panel.querySelector('.cb-body');
+      body.style.display = body.style.display === 'none' ? '' : 'none';
     });
-  }
 
-  // Build UI per group
-  groupNames.forEach(function(g){
-    var gkey = safeKey(g);
-    var wrap = el('div', {class:'cb-group', id:'cb-group-wrap-' + gkey});
+    // Cuerpo colapsable (empieza oculto)
+    var body = el('div', {class:'cb-body', style:'display:none;'});
 
-    var head = el('div', {class:'cb-group-head'});
-    var left = el('div', {style:'display:flex; align-items:center; gap:8px;'});
-    var gbox = el('span', {class:'cb-box', id:'cb-group-box-' + gkey});
-    var gname = el('span', {class:'cb-group-name'}, g);
-    left.appendChild(gbox);
-    left.appendChild(gname);
-    head.appendChild(left);
-    head.appendChild(el('div', {style:'font-size:10px; color: rgba(0,0,0,0.50);'}, 'group'));
-    wrap.appendChild(head);
+    var search = el('input', {class:'cb-search', type:'text', placeholder:'__SEARCH__'});
+    body.appendChild(search);
 
-    groups[g].forEach(function(it){
-      var row = el('div', {class:'cb-item', id:'cb-item-' + it.i});
-      var box = el('span', {class:'cb-box'});
-      var swatch = el('span', {class:'cb-swatch', style:'background:' + (it.color||'rgba(120,120,120,1)') + ';'});
-      var label = el('span', {class:'cb-label'});
-      label.textContent = it.name;
+    var actions = el('div', {class:'cb-actions'});
+    var btnAllOn = el('button', {class:'cb-btn', type:'button'}, '__ALL_ON__');
+    var btnAllOff = el('button', {class:'cb-btn', type:'button'}, '__ALL_OFF__');
+    var btnOnlyNow = el('button', {class:'cb-btn', type:'button'}, '__ONLY_NOW__');
+    actions.appendChild(btnAllOn);
+    actions.appendChild(btnAllOff);
+    actions.appendChild(btnOnlyNow);
+    body.appendChild(actions);
 
-      row.appendChild(box);
-      row.appendChild(swatch);
-      row.appendChild(label);
+    var groupsBox = el('div', {class:'cb-groups'});
+    body.appendChild(groupsBox);
 
-      // click vs dblclick
-      var timer = null;
-      row.addEventListener('click', function(){
-        if(timer) return;
-        timer = setTimeout(function(){
-          var on = isVisible(it.i);
-          setVisible(it.i, !on).then(syncAll);
-          timer = null;
+    panel.appendChild(body);
+
+    
+
+    // ---- Date picker overlay (same height as Edit panel, to its right) ----
+    var dpDiv = el('div', {style:
+      'display:flex; align-items:center; gap:8px;'
+    });
+    var fromSpan = el('span', {style:'font-size:13px; color:#555; margin-right:4px;'}, '__FROM__');
+    var fromInput = el('input', {type:'date',
+      style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
+    var toSpan = el('span', {style:'font-size:13px; color:#555; margin:0 4px 0 10px;'}, '__TO__');
+    var toInput = el('input', {type:'date',
+      style:'font-size:13px; border:1px solid rgba(0,0,0,0.15); border-radius:4px; padding:2px 4px;'});
+    dpDiv.appendChild(fromSpan);
+    dpDiv.appendChild(fromInput);
+    dpDiv.appendChild(toSpan);
+    dpDiv.appendChild(toInput);
+
+    // wrapper for button + panel
+    var btnWrap = el('div', {style: 'position: relative; display: inline-block;'});
+
+    // =========================
+    // RANGE BUTTONS (FIXED)
+    // =========================
+
+    function setRange(start, end, dtick){
+      var update = {
+        "xaxis.range[0]": start.toISOString(),
+        "xaxis.range[1]": end.toISOString(),
+        "xaxis.tickmode": "linear"
+      };
+      if(dtick){
+        update["xaxis.dtick"] = dtick;
+      }
+      Plotly.relayout(gd, update);
+    }
+
+    function makeBtn(label, onClick){
+      var b = el('button', {
+        style: 'padding:6px 10px; border:1px solid #ccc; background:#f8f8f8; cursor:pointer; border-radius:4px;'
+      }, label);
+      b.onclick = onClick;
+      return b;
+    }
+
+    var btn6m = makeBtn("6m", function(){
+      var end = new Date(xDataMax);
+      var start = new Date(end);
+      start.setMonth(start.getMonth() - 6);
+      setRange(start, end, "M1");
+    });
+
+    var btnYTD = makeBtn("YTD", function(){
+      var end = new Date(xDataMax);
+      var start = new Date(end.getFullYear(), 0, 1);
+      setRange(start, end, "M1");
+    });
+
+    var btnAll = makeBtn("All", function(){
+      setRange(new Date(xDataMin), new Date(xDataMax), "M6");
+    });
+
+    // NEW wrapper (DO NOT reuse btnWrap)
+    var rangeWrap = el('div', {
+      style: 'display:flex; gap:6px;'
+    });
+
+    rangeWrap.appendChild(btn6m);
+    rangeWrap.appendChild(btnYTD);
+    rangeWrap.appendChild(btnAll);
+
+    // KEEP original btnWrap for legend
+    btnWrap.appendChild(editBtn);
+    kpiBox.appendChild(panel);
+
+    controlsBox.appendChild(dpDiv);
+    controlsBox.appendChild(rangeWrap);
+    kpiBox.insertBefore(btnWrap, panel);
+
+    var initRange = ((gd.layout || {}).xaxis || {}).range || [];
+    var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
+    var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
+
+    // === derive min/max dates from actual trace data ===
+    var minDate = null;
+    var maxDate = null;
+
+    (gd.data || []).forEach(function(trace){
+      if (!trace.x) return;
+
+      trace.x.forEach(function(d){
+        var dt = new Date(d);
+        if (isNaN(dt)) return;
+
+        if (!minDate || dt < minDate) minDate = dt;
+        if (!maxDate || dt > maxDate) maxDate = dt;
+      });
+    });
+
+    function toInputDate(dt){
+      return dt.toISOString().slice(0,10);
+    }
+
+    // apply to inputs
+    if (minDate && maxDate) {
+      var minStr = toInputDate(minDate);
+      var maxStr = toInputDate(maxDate);
+
+      fromInput.value = minStr;
+      toInput.value   = maxStr;
+
+      fromInput.min = minStr;
+      fromInput.max = maxStr;
+
+      toInput.min = minStr;
+      toInput.max = maxStr;
+    }
+
+    function applyDateRange(){
+      var from = fromInput.value ? new Date(fromInput.value) : new Date(xDataMin);
+      var to = toInput.value ? new Date(toInput.value) : new Date(xDataMax);
+      setRange(from, to, "M1");
+    }
+
+    fromInput.addEventListener('change', applyDateRange);
+    toInput.addEventListener('change', applyDateRange);
+
+    // Group map
+    var groups = {};
+    ITEMS.forEach(function(it){
+      if(!groups[it.group]) groups[it.group] = [];
+      groups[it.group].push(it);
+    });
+
+    var groupNames = Object.keys(groups);
+    groupNames.sort(function(a,b){
+      var o = {'Series':0,'Confidence bands':1};
+      return (o[a]||9) - (o[b]||9);
+    });
+
+    function setBoxState(boxEl, state){
+      boxEl.classList.remove('on');
+      boxEl.classList.remove('mix');
+      boxEl.textContent = '';
+      if(state === 'on'){
+        boxEl.classList.add('on');
+        boxEl.textContent = '✓';
+      } else if(state === 'mix'){
+        boxEl.classList.add('mix');
+        boxEl.textContent = '−';
+      }
+    }
+
+    function rowState(rowEl, on){
+      var box = rowEl.querySelector('.cb-box');
+      if(on){
+        setBoxState(box, 'on');
+        rowEl.classList.remove('off');
+      } else {
+        setBoxState(box, 'off');
+        rowEl.classList.add('off');
+      }
+    }
+
+    function groupState(groupItems){
+      var onCount = 0;
+      groupItems.forEach(function(it){
+        if(isVisible(it.i)) onCount += 1;
+      });
+      if(onCount === 0) return 'off';
+      if(onCount === groupItems.length) return 'on';
+      return 'mix';
+    }
+
+    function syncAll(){
+      // rows
+      ITEMS.forEach(function(it){
+        var row = document.getElementById('cb-item-' + it.i);
+        if(!row) return;
+        rowState(row, isVisible(it.i));
+      });
+      // groups
+      groupNames.forEach(function(g){
+        var gkey = safeKey(g);
+        var headBox = document.getElementById('cb-group-box-' + gkey);
+        if(!headBox) return;
+        setBoxState(headBox, groupState(groups[g]));
+      });
+    }
+
+    function applyFilter(){
+      var q = (search.value || '').trim().toLowerCase();
+      groupNames.forEach(function(g){
+        var gkey = safeKey(g);
+        var anyShown = false;
+        groups[g].forEach(function(it){
+          var row = document.getElementById('cb-item-' + it.i);
+          if(!row) return;
+          var ok = (!q) || (it.name.toLowerCase().indexOf(q) >= 0);
+          row.style.display = ok ? '' : 'none';
+          if(ok) anyShown = true;
+        });
+        var gWrap = document.getElementById('cb-group-wrap-' + gkey);
+        if(gWrap) gWrap.style.display = anyShown ? '' : 'none';
+      });
+    }
+
+    // Build UI per group
+    groupNames.forEach(function(g){
+      var gkey = safeKey(g);
+      var wrap = el('div', {class:'cb-group', id:'cb-group-wrap-' + gkey});
+
+      var head = el('div', {class:'cb-group-head'});
+      var left = el('div', {style:'display:flex; align-items:center; gap:8px;'});
+      var gbox = el('span', {class:'cb-box', id:'cb-group-box-' + gkey});
+      var gname = el('span', {class:'cb-group-name'}, g);
+      left.appendChild(gbox);
+      left.appendChild(gname);
+      head.appendChild(left);
+      head.appendChild(el('div', {style:'font-size:10px; color: rgba(0,0,0,0.50);'}, '__GROUP__'));
+      wrap.appendChild(head);
+
+      groups[g].forEach(function(it){
+        var row = el('div', {class:'cb-item', id:'cb-item-' + it.i});
+        var box = el('span', {class:'cb-box'});
+        var swatch = el('span', {class:'cb-swatch', style:'background:' + (it.color||'rgba(120,120,120,1)') + ';'});
+        var label = el('span', {class:'cb-label'});
+        label.textContent = it.name;
+
+        row.appendChild(box);
+        row.appendChild(swatch);
+        row.appendChild(label);
+
+        // click vs dblclick
+        var timer = null;
+        row.addEventListener('click', function(){
+          if(timer) return;
+          timer = setTimeout(function(){
+            var on = isVisible(it.i);
+            setVisible(it.i, !on).then(syncAll);
+            timer = null;
+          }, 220);
+        });
+        row.addEventListener('dblclick', function(){
+          if(timer){ clearTimeout(timer); timer = null; }
+          isolate([it.i], 'trace:' + it.i).then(syncAll);
+        });
+
+        wrap.appendChild(row);
+      });
+
+      // group click vs dblclick
+      var gTimer = null;
+      head.addEventListener('click', function(){
+        if(gTimer) return;
+        gTimer = setTimeout(function(){
+          var st = groupState(groups[g]);
+          var indices = groups[g].map(function(it){ return it.i; });
+          var turnOn = (st === 'off' || st === 'mix');
+          setMany(indices, turnOn).then(syncAll);
+          gTimer = null;
         }, 220);
       });
-      row.addEventListener('dblclick', function(){
-        if(timer){ clearTimeout(timer); timer = null; }
-        isolate([it.i], 'trace:' + it.i).then(syncAll);
+      head.addEventListener('dblclick', function(){
+        if(gTimer){ clearTimeout(gTimer); gTimer = null; }
+        var indices = groups[g].map(function(it){ return it.i; });
+        isolate(indices, 'group:' + gkey).then(syncAll);
       });
 
-      wrap.appendChild(row);
+      groupsBox.appendChild(wrap);
     });
 
-    // group click vs dblclick
-    var gTimer = null;
-    head.addEventListener('click', function(){
-      if(gTimer) return;
-      gTimer = setTimeout(function(){
-        var st = groupState(groups[g]);
-        var indices = groups[g].map(function(it){ return it.i; });
-        var turnOn = (st === 'off' || st === 'mix');
-        setMany(indices, turnOn).then(syncAll);
-        gTimer = null;
-      }, 220);
+    // Actions
+    btnAllOn.addEventListener('click', function(){
+      var idx = ITEMS.map(function(it){ return it.i; });
+      setMany(idx, true).then(syncAll);
     });
-    head.addEventListener('dblclick', function(){
-      if(gTimer){ clearTimeout(gTimer); gTimer = null; }
-      var indices = groups[g].map(function(it){ return it.i; });
-      isolate(indices, 'group:' + gkey).then(syncAll);
+    btnAllOff.addEventListener('click', function(){
+      var idx = ITEMS.map(function(it){ return it.i; });
+      setMany(idx, false).then(syncAll);
+    });
+    btnOnlyNow.addEventListener('click', function(){
+      var now = ITEMS.filter(function(it){ return it.name.toLowerCase() === 'nowcast'; }).map(function(it){ return it.i; });
+      var keep = {};
+      now.forEach(function(i){ keep[i] = true; });
+
+      var all = [];
+      var upd = {visible: []};
+      for(var k=0; k<gd.data.length; k++){
+        all.push(k);
+        upd.visible.push(keep[k] ? true : 'legendonly');
+      }
+      Plotly.restyle(gd, upd, all).then(syncAll);
     });
 
-    groupsBox.appendChild(wrap);
-  });
+    // Search
+    search.addEventListener('input', function(){ applyFilter(); });
 
-  // Actions
-  btnAllOn.addEventListener('click', function(){
-    var idx = ITEMS.map(function(it){ return it.i; });
-    setMany(idx, true).then(syncAll);
-  });
-  btnAllOff.addEventListener('click', function(){
-    var idx = ITEMS.map(function(it){ return it.i; });
-    setMany(idx, false).then(syncAll);
-  });
-  btnOnlyNow.addEventListener('click', function(){
-    var now = ITEMS.filter(function(it){ return it.name.toLowerCase() === 'nowcast'; }).map(function(it){ return it.i; });
-    var keep = {};
-    now.forEach(function(i){ keep[i] = true; });
+    // Initial
+    syncAll();
+    applyFilter();
 
-    var all = [];
-    var upd = {visible: []};
-    for(var k=0; k<gd.data.length; k++){
-      all.push(k);
-      upd.visible.push(keep[k] ? true : 'legendonly');
+    // Keep in sync if plot changes
+    if(gd.on){
+      gd.on('plotly_restyle', function(){ syncAll(); });
+      gd.on('plotly_redraw', function(){ syncAll(); });
     }
-    Plotly.restyle(gd, upd, all).then(syncAll);
-  });
 
-  // Search
-  search.addEventListener('input', function(){ applyFilter(); });
+    // -----------------------------
+    // DRAG dentro del gráfico (bounded)
+    // -----------------------------
+    function clampPos(left, top){
+      var rectG = gd.getBoundingClientRect();
+      var rectP = panel.getBoundingClientRect();
+      var pad = 6;
 
-  // Initial
-  syncAll();
-  applyFilter();
+      var maxLeft = rectG.width - rectP.width - pad;
+      var maxTop  = rectG.height - rectP.height - pad;
 
-  // Keep in sync if plot changes
-  if(gd.on){
-    gd.on('plotly_restyle', function(){ syncAll(); });
-    gd.on('plotly_redraw', function(){ syncAll(); });
-  }
+      var L = Math.max(pad, Math.min(left, maxLeft));
+      var T = Math.max(pad, Math.min(top,  maxTop));
+      return {L:L, T:T};
+    }
 
-  // -----------------------------
-  // DRAG dentro del gráfico (bounded)
-  // -----------------------------
-  function clampPos(left, top){
-    var rectG = gd.getBoundingClientRect();
-    var rectP = panel.getBoundingClientRect();
-    var pad = 6;
+    var dragging = false;
+    var offX = 0, offY = 0;
 
-    var maxLeft = rectG.width - rectP.width - pad;
-    var maxTop  = rectG.height - rectP.height - pad;
+    var filterBtn = document.getElementById('filter-btn');
+    var filterPanel = document.getElementById('filter-panel');
 
-    var L = Math.max(pad, Math.min(left, maxLeft));
-    var T = Math.max(pad, Math.min(top,  maxTop));
-    return {L:L, T:T};
-  }
+    if (filterBtn && filterPanel) {
+      filterBtn.onclick = function() {
+        filterPanel.classList.toggle('open');
 
-  var dragging = false;
-  var offX = 0, offY = 0;
+        // IMPORTANT: resize plot after panel opens/closes
+        setTimeout(function(){
+          if (window.Plotly && gd) {
+            Plotly.Plots.resize(gd);
+          }
+        }, 100);
+      };
+    }
 
-  header.addEventListener('pointerdown', function(e){
-    // para que el drag no seleccione texto
-    e.preventDefault();
-    dragging = true;
-
-    // Pasar a posicionamiento por left/top
-    var rectG = gd.getBoundingClientRect();
-    var rectP = panel.getBoundingClientRect();
-    var curLeft = rectP.left - rectG.left;
-    var curTop  = rectP.top  - rectG.top;
-
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-    panel.style.left = curLeft + 'px';
-    panel.style.top  = curTop  + 'px';
-
-    offX = e.clientX - rectP.left;
-    offY = e.clientY - rectP.top;
-
-    header.setPointerCapture(e.pointerId);
-  });
-
-  header.addEventListener('pointermove', function(e){
-    if(!dragging) return;
-    var rectG = gd.getBoundingClientRect();
-    var left = (e.clientX - rectG.left) - offX;
-    var top  = (e.clientY - rectG.top)  - offY;
-    var c = clampPos(left, top);
-    panel.style.left = c.L + 'px';
-    panel.style.top  = c.T + 'px';
-  });
-
-  header.addEventListener('pointerup', function(e){
-    dragging = false;
-    try{ header.releasePointerCapture(e.pointerId); } catch(_){}
-  });
-
-})();
-""".replace("__ITEMS_JSON__", items_json)
+  })();
+""".replace("__ITEMS_JSON__", items_json) \
+.replace("__EDIT_LABEL__", t("edit")) \
+.replace("__ALL_ON__", t("all_on"))  \
+.replace("__ALL_OFF__", t("all_off"))  \
+.replace("__ONLY_NOW__", t("only_now"))  \
+.replace("__SEARCH__", t("search"))  \
+.replace("__FROM__", t("from"))  \
+.replace("__TO__", t("to"))  \
+.replace("__GROUP__", t("group"))
 
     return post_script
 

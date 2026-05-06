@@ -58,6 +58,8 @@ services:
     volumes:
       - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
       - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
+      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
+      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
     environment:
       - FROM_DOCKER=true
       - URL_PREFIX=/prod/epu/en/
@@ -77,6 +79,8 @@ services:
     volumes:
       - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
       - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
+      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
+      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
     environment:
       - FROM_DOCKER=true
       - URL_PREFIX=/prod/epu/es/
