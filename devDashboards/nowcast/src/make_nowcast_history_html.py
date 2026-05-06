@@ -523,12 +523,20 @@ def make_post_script(items: list) -> str:
       autosize: true
     });
 
-    // Create ONLY the top control bar (no outer container)
-    var topContainer = document.createElement('div');
-    topContainer.style.display = 'flex';
-    topContainer.style.alignItems = 'center';
-    topContainer.style.gap = '8px';
-    topContainer.style.height = '100%';
+    function el(tag, attrs, html){
+      var x = document.createElement(tag);
+      if(attrs){
+        Object.keys(attrs).forEach(function(k){
+          if(k === 'style') x.setAttribute('style', attrs[k]);
+          else x.setAttribute(k, attrs[k]);
+        });
+      }
+      if(html !== undefined) x.innerHTML = html;
+      return x;
+    }
+
+    var controlsBox = el('div', {class:'filter-box filter-box--controls'});
+    var kpiBox = el('div', {class:'filter-box filter-box--kpis'});
 
     // Push graph down so controls don’t overlap
     Plotly.relayout(gd, {
@@ -539,7 +547,10 @@ def make_post_script(items: list) -> str:
     var filterPanel = document.getElementById('filter-panel');
 
     if (filterPanel) {
-      filterPanel.appendChild(topContainer);
+      var container = el('div', {class:'filters-container'});
+      container.appendChild(controlsBox);
+      container.appendChild(kpiBox);
+      filterPanel.appendChild(container);
     }
 
     // Resize after mount
@@ -556,21 +567,8 @@ def make_post_script(items: list) -> str:
     window.addEventListener('resize', resizePlot);
 
     var ITEMS = __ITEMS_JSON__;
-    var doc = gd.ownerDocument;
 
     function safeKey(s){ return String(s).replace(/[^a-z0-9_-]/gi,'_'); }
-
-    function el(tag, attrs, html){
-      var x = doc.createElement(tag);
-      if(attrs){
-        Object.keys(attrs).forEach(function(k){
-          if(k === 'style') x.setAttribute('style', attrs[k]);
-          else x.setAttribute(k, attrs[k]);
-        });
-      }
-      if(html !== undefined) x.innerHTML = html;
-      return x;
-    }
 
     function isVisible(idx){
       var v = gd.data[idx].visible;
@@ -637,15 +635,14 @@ def make_post_script(items: list) -> str:
     }
 
     // CSS compacto + overlay + scroll interno
-    if(!doc.getElementById('cb-legend-style')){
+    if(!document.getElementById('cb-legend-style')){
       var st = el('style', {id:'cb-legend-style'});
       st.textContent = `
         .cb-panel{
-          position: absolute;
-          top: calc(100% + 6px);
-          left: 0;
+          position: relative;
+          width: 100%;
           background-color: white;
-          z-index: 1000;
+          z-index: auto;
         }
         .cb-editbtn{
           font-size: 12px;
@@ -770,11 +767,11 @@ def make_post_script(items: list) -> str:
           white-space: nowrap;
         }
       `;
-      doc.head.appendChild(st);
+      document.head.appendChild(st);
     }
 
     // Remove previous panel if any
-    var prev = doc.getElementById('cb-panel');
+    var prev = document.getElementById('cb-panel');
     if(prev) prev.remove();
 
     // Panel DOM
@@ -829,9 +826,6 @@ def make_post_script(items: list) -> str:
     // wrapper for button + panel
     var btnWrap = el('div', {style: 'position: relative; display: inline-block;'});
 
-
-    topContainer.appendChild(dpDiv);
-
     // =========================
     // RANGE BUTTONS (FIXED)
     // =========================
@@ -882,12 +876,13 @@ def make_post_script(items: list) -> str:
     rangeWrap.appendChild(btnYTD);
     rangeWrap.appendChild(btnAll);
 
-    topContainer.appendChild(rangeWrap);
-
     // 👉 KEEP original btnWrap for legend
-    btnWrap.appendChild(editBtn);
-    btnWrap.appendChild(panel);
-    topContainer.appendChild(btnWrap);
+    btnWrap.appendChild(editBtn);   // stays in controls row
+    kpiBox.appendChild(panel);      // 🔥 panel goes to row 2
+
+    controlsBox.appendChild(dpDiv);
+    controlsBox.appendChild(rangeWrap);
+    controlsBox.appendChild(btnWrap);
 
     var initRange = ((gd.layout || {}).xaxis || {}).range || [];
     var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
@@ -952,14 +947,14 @@ def make_post_script(items: list) -> str:
     function syncAll(){
       // rows
       ITEMS.forEach(function(it){
-        var row = doc.getElementById('cb-item-' + it.i);
+        var row = document.getElementById('cb-item-' + it.i);
         if(!row) return;
         rowState(row, isVisible(it.i));
       });
       // groups
       groupNames.forEach(function(g){
         var gkey = safeKey(g);
-        var headBox = doc.getElementById('cb-group-box-' + gkey);
+        var headBox = document.getElementById('cb-group-box-' + gkey);
         if(!headBox) return;
         setBoxState(headBox, groupState(groups[g]));
       });
@@ -971,13 +966,13 @@ def make_post_script(items: list) -> str:
         var gkey = safeKey(g);
         var anyShown = false;
         groups[g].forEach(function(it){
-          var row = doc.getElementById('cb-item-' + it.i);
+          var row = document.getElementById('cb-item-' + it.i);
           if(!row) return;
           var ok = (!q) || (it.name.toLowerCase().indexOf(q) >= 0);
           row.style.display = ok ? '' : 'none';
           if(ok) anyShown = true;
         });
-        var gWrap = doc.getElementById('cb-group-wrap-' + gkey);
+        var gWrap = document.getElementById('cb-group-wrap-' + gkey);
         if(gWrap) gWrap.style.display = anyShown ? '' : 'none';
       });
     }

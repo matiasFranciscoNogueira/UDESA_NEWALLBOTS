@@ -167,6 +167,48 @@ def generate_html():
                 pointer-events: auto;
             }}
 
+            /* ===== FILTER STRUCTURE (Layer 2) ===== */
+
+            .filters-container {{
+                position: absolute;
+                top: 6px;
+                left: 12px;
+                right: 12px;
+
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+
+                z-index: 1100;
+            }}
+
+            .filter-box {{
+                background: #f8f9fb;
+                border: 1px solid rgba(0,0,0,0.08);
+                border-radius: 6px;
+                padding: 10px;
+
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }}
+
+            .filter-box--controls {{
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 12px;
+
+                width: 100%;
+            }}
+
+            .filter-box--kpis {{
+                width: 100%;
+                max-height: 260px;
+                overflow: auto;
+                min-height: 120px;
+            }}
+
             #filter-btn {{
                 background: #333;
                 color: white;
