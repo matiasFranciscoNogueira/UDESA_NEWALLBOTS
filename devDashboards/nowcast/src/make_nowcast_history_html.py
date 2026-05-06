@@ -47,7 +47,7 @@ TRANSLATIONS = {
         "group": "group",
         "series": "Series",
         "bands": "Confidence bands",
-        "filters": "Filters"
+        "filters": "☰ Filters"
     },
     "ES": {
         "nowcast": "Nowcast",
@@ -64,7 +64,7 @@ TRANSLATIONS = {
         "group": "grupo",
         "series": "Series",
         "bands": "Bandas de confianza",
-        "filters": "Filtros"
+        "filters": "☰ Filtros"
     }
 }
 
@@ -548,8 +548,10 @@ def make_post_script(items: list) -> str:
 
     if (filterPanel) {
       var container = el('div', {class:'filters-container'});
-      container.appendChild(controlsBox);
-      container.appendChild(kpiBox);
+      var shellControls = el('div', {class:'shell-controls'});
+      shellControls.appendChild(controlsBox);
+      shellControls.appendChild(kpiBox);
+      container.appendChild(shellControls);
       filterPanel.appendChild(container);
     }
 
@@ -643,6 +645,7 @@ def make_post_script(items: list) -> str:
           width: 100%;
           background-color: white;
           z-index: auto;
+          display: block;
         }
         .cb-editbtn{
           font-size: 12px;
@@ -867,7 +870,7 @@ def make_post_script(items: list) -> str:
       setRange(new Date(xDataMin), new Date(xDataMax), "M6");
     });
 
-    // 👉 NEW wrapper (DO NOT reuse btnWrap)
+    // NEW wrapper (DO NOT reuse btnWrap)
     var rangeWrap = el('div', {
       style: 'display:flex; gap:6px;'
     });
@@ -876,17 +879,52 @@ def make_post_script(items: list) -> str:
     rangeWrap.appendChild(btnYTD);
     rangeWrap.appendChild(btnAll);
 
-    // 👉 KEEP original btnWrap for legend
-    btnWrap.appendChild(editBtn);   // stays in controls row
-    kpiBox.appendChild(panel);      // 🔥 panel goes to row 2
+    // KEEP original btnWrap for legend
+    btnWrap.appendChild(editBtn);
+    kpiBox.appendChild(panel);
 
     controlsBox.appendChild(dpDiv);
     controlsBox.appendChild(rangeWrap);
-    controlsBox.appendChild(btnWrap);
+    kpiBox.insertBefore(btnWrap, panel);
 
     var initRange = ((gd.layout || {}).xaxis || {}).range || [];
     var xDataMin = initRange[0] ? String(initRange[0]).split('T')[0] : null;
     var xDataMax = initRange[1] ? String(initRange[1]).split('T')[0] : null;
+
+    // === derive min/max dates from actual trace data ===
+    var minDate = null;
+    var maxDate = null;
+
+    (gd.data || []).forEach(function(trace){
+      if (!trace.x) return;
+
+      trace.x.forEach(function(d){
+        var dt = new Date(d);
+        if (isNaN(dt)) return;
+
+        if (!minDate || dt < minDate) minDate = dt;
+        if (!maxDate || dt > maxDate) maxDate = dt;
+      });
+    });
+
+    function toInputDate(dt){
+      return dt.toISOString().slice(0,10);
+    }
+
+    // apply to inputs
+    if (minDate && maxDate) {
+      var minStr = toInputDate(minDate);
+      var maxStr = toInputDate(maxDate);
+
+      fromInput.value = minStr;
+      toInput.value   = maxStr;
+
+      fromInput.min = minStr;
+      fromInput.max = maxStr;
+
+      toInput.min = minStr;
+      toInput.max = maxStr;
+    }
 
     function applyDateRange(){
       var from = fromInput.value ? new Date(fromInput.value) : new Date(xDataMin);

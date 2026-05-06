@@ -169,6 +169,18 @@ def generate_html():
 
             /* ===== FILTER STRUCTURE (Layer 2) ===== */
 
+            .shell-controls {{
+                background: #fafafa;
+                border: 1px solid #d0d6dd;
+                border-radius: 8px;
+                padding: 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                width: 100%;
+                transform: translateX(-10px);
+            }}
+
             .filters-container {{
                 position: absolute;
                 top: 6px;
@@ -183,10 +195,10 @@ def generate_html():
             }}
 
             .filter-box {{
-                background: #f8f9fb;
+                background: rgba(255,255,255,0.88);
                 border: 1px solid rgba(0,0,0,0.08);
                 border-radius: 6px;
-                padding: 10px;
+                padding: 8px;
 
                 display: flex;
                 flex-direction: column;
@@ -206,7 +218,8 @@ def generate_html():
                 width: 100%;
                 max-height: 260px;
                 overflow: auto;
-                min-height: 120px;
+                display: block;
+                padding-top: 6px;
             }}
 
             #filter-btn {{
