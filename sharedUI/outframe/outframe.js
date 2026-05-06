@@ -10,8 +10,18 @@ function initOutframe() {
 
   const header = document.createElement("div");
   header.id = "shell-header";
+  const path = window.location.pathname;
+
+  let title = "Epu";
+  let lang = "EN";
+
+  // detect language from URL
+  if (path.includes("/es/")) {
+    lang = "ES";
+  }
+
   header.innerHTML = `
-    <span style="flex:1">Dashboard</span>
+    <span style="flex:1"><strong>${title} (${lang})</strong></span>
     <button id="menu-toggle">☰ Filters</button>
   `;
 
