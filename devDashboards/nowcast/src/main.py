@@ -134,17 +134,37 @@ def generate_html():
             }}
 
             #filter-panel {{
-                display: none;
+                position: absolute;
+                top: 48px;              /* height of header */
+                left: 0;
+                width: 100%;
+
                 background: white;
                 border-bottom: 1px solid rgba(0,0,0,0.1);
-                padding: 8px 12px;
-            }}
 
-            #filter-panel.open {{
+                padding: 8px 12px;
+
                 display: flex;
                 align-items: center;
                 gap: 10px;
                 flex-wrap: wrap;
+
+                /* animation base */
+                transform: translateY(-10px);
+                opacity: 0;
+                pointer-events: none;
+
+                transition: 
+                    transform 0.2s ease,
+                    opacity 0.2s ease;
+
+                z-index: 1000;
+            }}
+
+            #filter-panel.open {{
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
             }}
 
             #filter-btn {{
