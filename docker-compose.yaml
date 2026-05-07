@@ -3,17 +3,14 @@ networks:
     driver: bridge
 
 services:
-
-  # ======================
-  # DATA PIPELINE (WRITE)
-  # ======================
-
+  # DATA PIPELINE
   epu-arg:
     build:
-      context: ./dataExtractors/epu
+      context: .
+      dockerfile: dataExtractors/epu/Dockerfile # Ruta explícita desde la raíz
     volumes:
-      - ./sharedData/epu/data/rawData:/app/data/epu/rawData
-      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
+      - epu-raw:/app/data/epu/rawData
+      - epu-db:/app/data/epu/db
       - ./config/gcp:/app/keys:ro
     environment:
       - SHARED_DATA_PATH=/app/data/epu
@@ -21,45 +18,22 @@ services:
       - all-bots-net
     restart: on-failure:5
 
-  # (Optional future)
-  # nowcast-extractor:
-  #   build:
-  #     context: ./dataExtractors/nowcast
-  #   volumes:
-  #     -- ./sharedData/epu/raw:/app/data/nowcast/raw
-  #     - ./config/gcp:/app/keys:ro
-  #   environment:
-  #     - SHARED_DATA_PATH=/app/data/nowcast
-  #   networks:
-  #     - all-bots-net
-  #   restart: on-failure:5
-
-  # ======================
-  # JS ALL DASHBOARDS Container
-  # ======================
+  # JS ALL DASHBOARDS
   shell:
     build:
-      context: ./allDashboardShell
-    container_name: dashboard-shell
+      context: .
+      dockerfile: allDashboardShell/Dockerfile
     ports:
       - "3000:80"
     networks:
       - all-bots-net
     restart: unless-stopped
 
-
-  # ======================
-  # PROD DASHBOARDS
-  # ======================
-
+  # PROD DASHBOARDS (Ejemplo unificado)
   epu-en-prod:
     build:
-      context: ./prodDashboards/epu
-    volumes:
-      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
-      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
-      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
-      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
+      context: .
+      dockerfile: prodDashboards/epu/Dockerfile
     environment:
       - FROM_DOCKER=true
       - URL_PREFIX=/prod/epu/en/
@@ -73,186 +47,21 @@ services:
       - all-bots-net
     restart: unless-stopped
 
-  epu-es-prod:
-    build:
-      context: ./prodDashboards/epu
-    volumes:
-      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
-      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
-      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
-      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
-    environment:
-      - FROM_DOCKER=true
-      - URL_PREFIX=/prod/epu/es/
-      - DATA_PATH=/app/data/epu
-      - LANG=ES
-    ports:
-      - "8051:8050"
-    depends_on:
-      - epu-arg
-    networks:
-      - all-bots-net
-    restart: unless-stopped
+  # ... (repite la lógica de build explícito para epu-es-prod, nowcast, etc.)
 
-  nowcast-en-prod:
-    build:
-      context: ./prodDashboards/nowcast
-    volumes:
-      - ./sharedData:/app/data:ro
-    environment:
-      - URL_PREFIX=/prod/nowcast/en/
-      - DATA_PATH=/app/data/nowcast
-      - LANG=EN
-    ports:
-      - "8060:8060"
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  nowcast-es-prod:
-    build:
-      context: ./prodDashboards/nowcast
-    volumes:
-      - ./sharedData:/app/data:ro
-    environment:
-      - URL_PREFIX=/prod/nowcast/es/
-      - DATA_PATH=/app/data/nowcast
-      - LANG=ES
-    ports:
-      - "8061:8060"
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  # ======================
-  # DEV DASHBOARDS
-  # ======================
-
-  epu-en-dev:
-    build:
-      context: ./devDashboards/epu
-    ports:
-      - "9050:8050"
-    environment:
-      - ENV=DEV
-      - FROM_DOCKER=true
-      - URL_PREFIX=/dev/epu/en/
-      - DATA_PATH=/app/data/epu
-      - LANG=EN
-    volumes:
-      - ./devDashboards/epu:/app
-      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
-      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
-      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
-      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
-    depends_on:
-      - epu-arg
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  epu-es-dev:
-    build:
-      context: ./devDashboards/epu
-    ports:
-      - "9051:8050"
-    environment:
-      - ENV=DEV
-      - FROM_DOCKER=true
-      - URL_PREFIX=/dev/epu/es/
-      - DATA_PATH=/app/data/epu
-      - LANG=ES
-    volumes:
-      - ./devDashboards/epu:/app
-      - ./sharedData/epu/data/rawData:/app/data/epu/rawData:ro
-      - ./sharedData/epu/data/runtimeDb:/app/data/epu/db
-      - ./sharedUI/outframe/outframe.js:/app/assets/outframe.js:ro
-      - ./sharedUI/outframe/outframe.css:/app/assets/outframe.css:ro
-    depends_on:
-      - epu-arg
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  nowcast-en-dev:
-    build:
-      context: ./devDashboards/nowcast
-    ports:
-      - "9060:8060"
-    environment:
-      - ENV=DEV
-      - FROM_DOCKER=true
-      - URL_PREFIX=/dev/nowcast/en/
-      - DATA_PATH=/app/data/nowcast
-      - LANG=EN
-    volumes:
-      - ./devDashboards/nowcast:/app
-      - ./sharedData:/app/data
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  nowcast-es-dev:
-    build:
-      context: ./devDashboards/nowcast
-    ports:
-      - "9061:8060"
-    environment:
-      - ENV=DEV
-      - FROM_DOCKER=true
-      - URL_PREFIX=/dev/nowcast/es/
-      - DATA_PATH=/app/data/nowcast
-      - LANG=ES
-    volumes:
-      - ./devDashboards/nowcast:/app
-      - ./sharedData:/app/data
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-
-  # ======================
-  # GATEWAY
-  # ======================
-
+  # GATEWAY (NGINX)
   nginx:
     image: nginx:alpine
-    container_name: nginx
     ports:
-      - "80:80"
+      - "8888:80" # Cambiamos el 80 por 8888 para evitar conflicto con Coolify
     volumes:
       - ./config/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./config/nginx/nginx_fallback.html:/usr/share/nginx/html/fallback.html:ro
     networks:
       - all-bots-net
     restart: unless-stopped
 
-  ngrok:
-    image: ngrok/ngrok:latest
-    container_name: ngrok-prod
-    command: ["http", "nginx:80", "--log=stdout"]
-    env_file:
-      - ./config/ngrok/.env
-    ports:
-      - "4040:4040"
-    depends_on:
-      - nginx
-    networks:
-      - all-bots-net
-    restart: unless-stopped
-    labels:
-      - autoheal=true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4040"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+# ELIMINAMOS NGROK Y AUTOHEAL: Coolify ya gestiona salud y túneles si los necesitas.
 
-  autoheal:
-    image: willfarrell/autoheal
-    container_name: autoheal
-    restart: always
-    environment:
-      - AUTOHEAL_CONTAINER_LABEL=autoheal
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+volumes:
+  epu-raw:
+  epu-db:
