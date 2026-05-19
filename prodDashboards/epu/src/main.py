@@ -68,8 +68,8 @@ TRANSLATIONS = {
         "date": "Fecha",
         "epu": "EPU",
         "months": ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"],
-        "currency_crisis": "Crisis Monetaria",
-        "monetary_policy": "Politica Monetaria",
+        "currency_crisis": "Crisis cambiaria",
+        "monetary_policy": "Politica monetaria",
         "trade": "Comercio",
     }
 }

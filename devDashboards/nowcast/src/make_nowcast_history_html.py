@@ -47,7 +47,9 @@ TRANSLATIONS = {
         "group": "group",
         "series": "Series",
         "bands": "Confidence bands",
-        "filters": "☰ Filters"
+        "filters": "☰ Filters",
+        "b_ytd":"YTD",
+        "b_all":"All"
     },
     "ES": {
         "nowcast": "Nowcast",
@@ -64,7 +66,9 @@ TRANSLATIONS = {
         "group": "grupo",
         "series": "Series",
         "bands": "Bandas de confianza",
-        "filters": "☰ Filtros"
+        "filters": "☰ Filtros",
+        "b_ytd":"Acu.Año",
+        "b_ytd":"Todo"
     }
 }
 
@@ -860,13 +864,13 @@ def make_post_script(items: list) -> str:
       setRange(start, end, "M1");
     });
 
-    var btnYTD = makeBtn("YTD", function(){
+    var btnYTD = makeBtn(t("b_ytd"), function(){
       var end = new Date(xDataMax);
       var start = new Date(end.getFullYear(), 0, 1);
       setRange(start, end, "M1");
     });
 
-    var btnAll = makeBtn("All", function(){
+    var btnAll = makeBtn(t("b_all"), function(){
       setRange(new Date(xDataMin), new Date(xDataMax), "M6");
     });
 
