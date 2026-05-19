@@ -1,0 +1,11 @@
+FROM docker:dind
+
+RUN apk upgrade --no-cache && apk add --no-cache openssh-server bash curl git openssl netcat-openbsd
+
+COPY docker/coolify-target-entrypoint.sh /usr/local/bin/coolify-target-entrypoint.sh
+RUN chmod +x /usr/local/bin/coolify-target-entrypoint.sh
+
+EXPOSE 22
+
+ENTRYPOINT ["coolify-target-entrypoint.sh"]
+CMD ["dockerd"]

@@ -1,0 +1,181 @@
+services:
+  coolify-permissions:
+    image: "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify:${LATEST_IMAGE:-latest}"
+    container_name: coolify-permissions
+    user: root
+    entrypoint: ["sh", "-lc"]
+    command: >
+      "mkdir -p /var/www/html/storage/app/ssh/keys /var/www/html/storage/app/ssh/mux &&
+      if [ ! -f /var/www/html/storage/app/ssh/keys/id.root@host.docker.internal ]; then
+      ssh-keygen -t ed25519 -a 100 -f /var/www/html/storage/app/ssh/keys/id.root@host.docker.internal -q -N '' -C root@coolify;
+      fi &&
+      chown -R www-data:www-data /var/www/html/storage/app/ssh /var/www/html/storage/app/applications /var/www/html/storage/app/databases /var/www/html/storage/app/services /var/www/html/storage/app/backups &&
+      chmod 700 /var/www/html/storage/app/ssh/keys &&
+      chmod 600 /var/www/html/storage/app/ssh/keys/id.root@host.docker.internal"
+    volumes:
+      - coolify-ssh:/var/www/html/storage/app/ssh
+      - coolify-applications:/var/www/html/storage/app/applications
+      - coolify-databases:/var/www/html/storage/app/databases
+      - coolify-services:/var/www/html/storage/app/services
+      - coolify-backups:/var/www/html/storage/app/backups
+
+  coolify:
+    image: "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify:${LATEST_IMAGE:-latest}"
+    container_name: coolify
+    restart: unless-stopped
+    working_dir: /var/www/html
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      APP_ENV: "${APP_ENV:-production}"
+      PHP_MEMORY_LIMIT: "${PHP_MEMORY_LIMIT:-256M}"
+      PHP_FPM_PM_CONTROL: "${PHP_FPM_PM_CONTROL:-dynamic}"
+      PHP_FPM_PM_START_SERVERS: "${PHP_FPM_PM_START_SERVERS:-1}"
+      PHP_FPM_PM_MIN_SPARE_SERVERS: "${PHP_FPM_PM_MIN_SPARE_SERVERS:-1}"
+      PHP_FPM_PM_MAX_SPARE_SERVERS: "${PHP_FPM_PM_MAX_SPARE_SERVERS:-10}"
+    ports:
+      - "${COOLIFY_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /var/www/html/.env
+        read_only: true
+      - /var/run/docker.sock:/var/run/docker.sock
+      - coolify-ssh:/var/www/html/storage/app/ssh
+      - coolify-applications:/var/www/html/storage/app/applications
+      - coolify-databases:/var/www/html/storage/app/databases
+      - coolify-services:/var/www/html/storage/app/services
+      - coolify-backups:/var/www/html/storage/app/backups
+    networks:
+      - coolify
+    depends_on:
+      coolify-permissions:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      soketi:
+        condition: service_healthy
+      coolify-target:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: coolify-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${DB_DATABASE:-coolify}"
+      POSTGRES_USER: "${DB_USERNAME:-coolify}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD is required}"
+    volumes:
+      - coolify-db:/var/lib/postgresql/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: coolify-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
+    volumes:
+      - coolify-redis:/data
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  soketi:
+    image: "${REGISTRY_URL:-ghcr.io}/coollabsio/coolify-realtime:1.0.13"
+    container_name: coolify-realtime
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:${SOKETI_PORT:-6001}:6001"
+      - "127.0.0.1:${SOKETI_METRICS_PORT:-6002}:6002"
+    environment:
+      APP_NAME: "${APP_NAME:-Coolify}"
+      SOKETI_DEBUG: "${SOKETI_DEBUG:-false}"
+      SOKETI_DEFAULT_APP_ID: "${PUSHER_APP_ID:?PUSHER_APP_ID is required}"
+      SOKETI_DEFAULT_APP_KEY: "${PUSHER_APP_KEY:?PUSHER_APP_KEY is required}"
+      SOKETI_DEFAULT_APP_SECRET: "${PUSHER_APP_SECRET:?PUSHER_APP_SECRET is required}"
+      SOKETI_HOST: "${SOKETI_HOST:-0.0.0.0}"
+    volumes:
+      - coolify-ssh:/var/www/html/storage/app/ssh
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6001/ready && wget -qO- http://127.0.0.1:6002/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  coolify-target:
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify-target
+    container_name: coolify-target
+    restart: unless-stopped
+    privileged: true
+    environment:
+      COOLIFY_PUBLIC_KEY: "${COOLIFY_PUBLIC_KEY:-}"
+      COOLIFY_USER_PASSWORD: "${COOLIFY_USER_PASSWORD:-coolify-local-target}"
+      DOCKER_TLS_CERTDIR: ""
+    ports:
+      - "127.0.0.1:${LOCAL_TARGET_SSH_PORT:-2222}:22"
+      - "127.0.0.1:${LOCAL_APP_HTTP_PORT:-18080}:${TARGET_APP_HTTP_PORT:-8080}"
+    volumes:
+      - coolify-target-docker:/var/lib/docker
+      - coolify-target-ssh:/etc/ssh
+      - coolify-target-data:/data/all-bots
+    networks:
+      - coolify
+    healthcheck:
+      test: ["CMD-SHELL", "docker info >/dev/null 2>&1 && nc -z 127.0.0.1 22"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  coolify-db:
+    name: coolify-db
+  coolify-redis:
+    name: coolify-redis
+  coolify-ssh:
+    name: coolify-ssh
+  coolify-applications:
+    name: coolify-applications
+  coolify-databases:
+    name: coolify-databases
+  coolify-services:
+    name: coolify-services
+  coolify-backups:
+    name: coolify-backups
+  coolify-target-docker:
+    name: coolify-target-docker
+  coolify-target-ssh:
+    name: coolify-target-ssh
+  coolify-target-data:
+    name: coolify-target-data
+
+networks:
+  coolify:
+    driver: bridge

@@ -1,0 +1,11 @@
+# Persistent Coolify override. Copy to:
+#   /data/coolify/source/docker-compose.custom.yml
+# before starting/upgrading Coolify.
+#
+# The official Coolify base files are downloaded into /data/coolify/source and
+# are overwritten during upgrades. This custom file survives upgrades.
+
+services:
+  coolify:
+    ports:
+      - "${COOLIFY_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8000}:8080"
