@@ -142,7 +142,7 @@ def update_graph(_):
     df = df.set_index("date")
 
     ghirelli_values = None
-
+    ghirelli_benchmark = False
     try:
         ghirelli = pd.read_sql("SELECT * FROM benchmark", conn)
 
@@ -191,7 +191,7 @@ def update_graph(_):
             )
         )
 
-    if ghirelli_values is not None:
+    if (ghirelli_values is not None) and ghirelli_benchmark:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
