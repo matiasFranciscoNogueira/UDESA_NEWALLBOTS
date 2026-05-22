@@ -141,6 +141,9 @@ def update_graph(_):
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
 
+    cols_to_drop = ['Monetary Policy', 'Fiscal', 'Currency crises']
+    df.drop(cols_to_drop, axis = 1, inplace = True)
+
     ghirelli_values = None
 
     try:
@@ -169,6 +172,7 @@ def update_graph(_):
         "monetary_policy": "monetary_policy",
         "trade": "trade"
     }
+
     for i, col in enumerate(df.columns):
         normalized = col.lower().replace(" ", "_")
 
@@ -191,7 +195,8 @@ def update_graph(_):
             )
         )
 
-    if ghirelli_values is not None:
+    GHIRELLI_ON = False
+    if ghirelli_values is not None and GHIRELLI_ON:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
