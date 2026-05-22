@@ -22,11 +22,12 @@ RUN poetry config virtualenvs.create false && \
 COPY src ./src
 COPY scripts ./scripts
 COPY assets ./assets
+COPY data ./data/epu
 
-# Baseline Excel: siembra el volumen vacío en el primer deploy.
+# Baseline Exel: siembra el volumen vacío en el primer deploy.
 # Docker copia el contenido de /app/data al volumen si este está vacío.
 # El bot EPU lo sobreescribirá cuando genere datos nuevos.
-# COPY sharedData/epu/data/all_subcategories_compare.xlsx /app/data/epu/data/all_subcategories_compare.xlsx
+#COPY sharedData/epu/data/all_subcategories_compare.xlsx /app/data/epu/data/all_subcategories_compare.xlsx
 
 # Entrypoint: importa Excel al arrancar, luego inicia cron + dashboard
 COPY entrypoint.sh ./entrypoint.sh

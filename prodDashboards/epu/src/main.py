@@ -164,11 +164,9 @@ def update_graph(_):
 
     fig = go.Figure()
 
-    COLUMN_MAP = {
-        "currency_crisis": "currency_crisis",
-        "monetary_policy": "monetary_policy",
-        "trade": "trade"
-    }
+    do_not_plot = ["currency_crises", "monetary_policy", "fiscal" ]
+    df = df.drop(do_not_plot)
+    
     for i, col in enumerate(df.columns):
         normalized = col.lower().replace(" ", "_")
 
