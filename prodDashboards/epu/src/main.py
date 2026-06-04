@@ -80,7 +80,7 @@ def t(key):
 # -------------------------
 # DATABASE PATH
 # -------------------------
-RESULTS_DB = Path("/app/data/epu/db/database.sqlite")
+RESULTS_DB = Path("/app/data/epu/database.sqlite")
 if not RESULTS_DB.exists():
     raise RuntimeError(
         f"Database not found at {RESULTS_DB}. "
@@ -132,7 +132,7 @@ def update_graph(_):
 
     conn = sqlite3.connect(RESULTS_DB)
 
-    df = pd.read_sql("SELECT * FROM data", conn)
+    df = pd.read_sql("SELECT * FROM epu_main", conn)
 
     if df.empty:
         return go.Figure()
