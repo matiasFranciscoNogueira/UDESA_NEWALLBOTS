@@ -1,0 +1,7 @@
+# El explorador no usa librerías externas — sólo Python estándar
+# (csv, json, base64, pathlib, argparse, re, dataclasses, http.server).
+#
+# Versión mínima de Python requerida: 3.10
+# (usa typing PEP 604 — `str | None`).
+#
+# Si en el futuro se agregan dependencias, listarlas aquí con versión pinneada.
