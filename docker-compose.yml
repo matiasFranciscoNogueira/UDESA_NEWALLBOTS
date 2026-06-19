@@ -124,6 +124,36 @@ services:
       - all-bots-net
     restart: unless-stopped
 
+  meli-en-prod:
+    build:
+      context: ./prodDashboards/meli
+    ports:
+      - "8070:8000"
+    environment:
+      - FROM_DOCKER=true
+      - LANG=EN
+      - URL_PREFIX=/prod/meli/en/
+    volumes:
+      - ./prodDashboards/meli:/app
+    networks:
+      - all-bots-net
+    restart: unless-stopped
+
+  meli-es-prod:
+    build:
+      context: ./prodDashboards/meli
+    ports:
+      - "8071:8000"
+    environment:
+      - FROM_DOCKER=true
+      - LANG=ES
+      - URL_PREFIX=/prod/meli/es/
+    volumes:
+      - ./prodDashboards/meli:/app
+    networks:
+      - all-bots-net
+    restart: unless-stopped
+  
   # ======================
   # DEV DASHBOARDS
   # ======================
