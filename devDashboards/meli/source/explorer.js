@@ -4,7 +4,7 @@
   const bootstrap = window.EXPLORER_BOOTSTRAP || {};
   const app = document.getElementById('app');
   const lang = bootstrap.lang || {};
-  if (!app || !bootstrap || !bootstrap.data) {
+  if (!app || !bootstrap || !bootstrap.data || !bootstrap.markets) {
     if (app) {
       const msg = lang.bootError || 'The explorer could not be initialized.';
       app.innerHTML = `<div class="boot-shell"><p>${msg}</p></div>`;
@@ -14,13 +14,12 @@
 
   const {
     data,
+    markets,
     saleMetrics,
     rentMetrics,
-    regions,
     inmuebles,
     colors,
     snapshotId,
-    logos,
   } = bootstrap;
 
   // ===============================================================
@@ -28,19 +27,26 @@
   // ===============================================================
 
   // Display localizado del inmueble: state.inmueble guarda la clave de
-  // datos ("Casa"/"Departamento"), todo lo que se muestra al usuario
-  // pasa por esta función.
+  // datos ("Casa"/"Departamento"), todo lo visible pasa por aquí.
   function inmuebleDisplay(key) {
     const map = lang.inmuebleDisplay || {};
     return map[key] || key;
   }
 
-  // Display localizado de una región. Solo los aglomerados tienen un mapa
-  // de traducción (GBA Zona Norte → GBA North, etc.). Para barrios CABA y
-  // municipios — que son nombres propios — la función devuelve el data key
-  // sin cambio. La data del bootstrap sigue indexada por la clave original.
+  // Display localizado de una region. La fuente unificada es
+  // lang.regionDisplay (cubre aglomerados BA, ciudades/zonas Cordoba y
+  // Rosario). Barrios CABA, partidos GBA y barrios Cordoba/Rosario son
+  // proper nouns que pasan sin traduccion.
   function regionDisplay(key) {
-    const map = lang.aglomeradoDisplay || {};
+    const map = lang.regionDisplay || {};
+    return map[key] || key;
+  }
+
+  // Display localizado del mercado.
+  function marketDisplay(key) {
+    const meta = markets[key];
+    if (meta && meta.label) return meta.label;
+    const map = lang.marketDisplay || {};
     return map[key] || key;
   }
 
@@ -49,28 +55,63 @@
   }
 
   // ===============================================================
-  // Niveles geográficos
+  // Acceso a metadata por (mercado, nivel)
   // ===============================================================
 
-  const LEVEL_OPTIONS = [
-    { value: 'aglomerado', label: lang.levelAglomerado || 'Aglomerado' },
-    { value: 'barrio', label: lang.levelBarrio || 'Barrio (CABA)' },
-    { value: 'municipio', label: lang.levelMunicipio || 'Municipio (AMBA)' },
-  ];
+  function getMarketMeta(marketKey) {
+    return markets[marketKey] || null;
+  }
+  function getLevelMeta(marketKey, levelKey) {
+    const m = getMarketMeta(marketKey);
+    return (m && m.levels && m.levels[levelKey]) || null;
+  }
 
-  // Etiqueta del dropdown de regiones según el nivel activo.
-  const REGION_LABEL = {
-    aglomerado: lang.regionAglomerado || 'Aglomerado',
-    barrio: lang.regionBarrio || 'Barrio',
-    municipio: lang.regionMunicipio || 'Municipio',
-  };
+  // Opciones del dropdown de mercado (mantienen el orden del bootstrap).
+  const MARKET_OPTIONS = Object.keys(markets).map((k) => ({
+    value: k,
+    label: marketDisplay(k),
+  }));
 
-  // Selección por defecto al cambiar de nivel. Tiene que existir en el dataset.
-  const DEFAULT_SELECTION = {
-    aglomerado: ['AMBA', 'CABA'],
-    barrio: ['PALERMO', 'RECOLETA'],
-    municipio: ['Tigre', 'Vicente López'],
-  };
+  // Opciones del dropdown de nivel para un mercado dado.
+  function levelOptionsFor(marketKey) {
+    const m = getMarketMeta(marketKey);
+    if (!m) return [];
+    return Object.keys(m.levels).map((k) => ({
+      value: k,
+      label: m.levels[k].label,
+    }));
+  }
+
+  // Etiqueta del dropdown de regiones para (mercado, nivel) actual.
+  function regionLabelFor(marketKey, levelKey) {
+    const lv = getLevelMeta(marketKey, levelKey);
+    return (lv && lv.regionLabel) || 'Region';
+  }
+
+  // Lista de regiones expuestas en el dropdown segun el inmueble actual.
+  // Union de regiones donde alguno de los lados (sale o rent) tiene datos
+  // para ese inmueble. Implementado en build.py (`regionsByInmueble`).
+  function regionsForInmueble(marketKey, levelKey, inmueble) {
+    const lv = getLevelMeta(marketKey, levelKey);
+    if (!lv || !lv.regionsByInmueble) return [];
+    return lv.regionsByInmueble[inmueble] || [];
+  }
+
+  // Lista de inmuebles que tienen al menos una region disponible en el
+  // nivel actual. Si para un (market, level) ningun side tiene Casa, no
+  // se muestra "Casa" en el dropdown de inmueble.
+  function visibleInmueblesFor(marketKey, levelKey) {
+    return inmuebles.filter((i) => regionsForInmueble(marketKey, levelKey, i).length > 0);
+  }
+
+  // Mensaje editorial (clave i18n) si una celda esta oculta.
+  function hiddenReasonFor(marketKey, levelKey, side, inmueble) {
+    const lv = getLevelMeta(marketKey, levelKey);
+    if (!lv || !lv.hiddenCells) return null;
+    const sideMap = lv.hiddenCells[side];
+    if (!sideMap) return null;
+    return sideMap[inmueble] || null;
+  }
 
   // ===============================================================
   // Helpers de formato
@@ -144,7 +185,7 @@
   }
 
   // ===============================================================
-  // Estado y catálogos
+  // Estado y catalogos
   // ===============================================================
 
   const RANGE_OPTIONS = [
@@ -154,19 +195,10 @@
     { value: 'all', label: lang.rangeAllLong || 'Histórico completo', shortLabel: lang.rangeAllShort || 'Histórico' },
   ];
 
-  // Modo y universo quedan fijados como constantes: cada métrica se ve en su
-  // unidad natural (precio en nivel, contactos/oferta como índice base
-  // 2018/2019=1 que ya viene normalizado en el pipeline R) y siempre usamos
-  // el universo "todos los avisos" (stock). El usuario puede calcular
-  // variaciones aparte si las necesita; mantenemos la vista alineada con el
-  // informe oficial.
   const FIXED_MODE = 'level';
   const FIXED_UNIVERSO = 'stock';
-
   const RANGE_MONTHS = { '12': 12, '24': 24, '60': 60, 'all': null };
 
-  // Labels genéricos para el dropdown (sin sesgo a venta/alquiler).
-  // Cada panel sigue mostrando su título específico ("...de venta" / "...de alquiler").
   const METRIC_LABELS_GENERIC = {
     precio: lang.metricPrecio || 'Precio mediano por m²',
     demanda: lang.metricDemanda || 'Demanda (contactos)',
@@ -178,12 +210,24 @@
     label: METRIC_LABELS_GENERIC[key] || saleMetrics[key].label,
   }));
 
-  const defaultInmueble = inmuebles.includes('Departamento') ? 'Departamento' : inmuebles[0];
+  // Inmueble inicial: prefiere Departamento si esta en el catalogo.
+  const initialInmueble = inmuebles.includes('Departamento') ? 'Departamento' : inmuebles[0];
+
+  // Mercado inicial: el primero del orden definido en MARKETS.
+  const initialMarket = MARKET_OPTIONS[0].value;
+  const initialMarketMeta = getMarketMeta(initialMarket);
+  const initialLevel = initialMarketMeta.defaultLevel;
+  const initialLevelMeta = getLevelMeta(initialMarket, initialLevel);
+  const initialRegions = filterRegionsForInmueble(
+    initialLevelMeta.defaultRegions,
+    regionsForInmueble(initialMarket, initialLevel, initialInmueble),
+  );
 
   const state = {
-    nivel: 'aglomerado',
-    selectedRegions: new Set(DEFAULT_SELECTION.aglomerado),
-    inmueble: defaultInmueble,
+    market: initialMarket,
+    nivel: initialLevel,
+    selectedRegions: new Set(initialRegions),
+    inmueble: initialInmueble,
     metric: 'precio',
     universo: FIXED_UNIVERSO,
     range: 'all',
@@ -192,25 +236,105 @@
   };
 
   function currentRegionList() {
-    return regions[state.nivel] || [];
+    return regionsForInmueble(state.market, state.nivel, state.inmueble);
   }
 
-  // ¿La métrica actual admite la elección de universo de avisos?
-  // Sólo Precio admite distinción stock/flujo, y SÓLO en ventas y a nivel
-  // aglomerado o municipio (barrio CABA solo trae stock).
+  function currentLevelMeta() {
+    return getLevelMeta(state.market, state.nivel);
+  }
+
+  function currentMarketMeta() {
+    return getMarketMeta(state.market);
+  }
+
   function metricHasUniverso(metricKey) {
     return metricKey === 'precio';
   }
 
-  // Paleta para barrios y municipios: HSL distribuida según índice
-  // alfabético. Para aglomerados se usa la paleta fija de COLORS.
+  // ===============================================================
+  // Cascada de defaults al cambiar mercado / nivel / inmueble
+  // ===============================================================
+
+  function filterRegionsForInmueble(regions, allowed) {
+    const allowedSet = new Set(allowed);
+    const filtered = regions.filter((r) => allowedSet.has(r));
+    if (filtered.length) return filtered;
+    return allowed.length ? [allowed[0]] : [];
+  }
+
+  // Devuelve un inmueble valido para (market, level): preserva el actual si
+  // existe en el nivel; de lo contrario prefiere Departamento, sino el
+  // primero disponible.
+  function pickInmuebleFor(marketKey, levelKey, preferred) {
+    const visible = visibleInmueblesFor(marketKey, levelKey);
+    if (preferred && visible.includes(preferred)) return preferred;
+    if (visible.includes('Departamento')) return 'Departamento';
+    return visible[0] || preferred;
+  }
+
+  function pickLevelFor(marketKey, preferred) {
+    const m = getMarketMeta(marketKey);
+    if (!m) return null;
+    if (preferred && m.levels[preferred]) return preferred;
+    return m.defaultLevel || Object.keys(m.levels)[0];
+  }
+
+  function pickDefaultRegions(marketKey, levelKey, inmueble) {
+    const lv = getLevelMeta(marketKey, levelKey);
+    if (!lv) return [];
+    const allowed = regionsForInmueble(marketKey, levelKey, inmueble);
+    if (!allowed.length) return [];
+    const filtered = lv.defaultRegions.filter((r) => allowed.includes(r));
+    if (filtered.length) return filtered;
+    return [allowed[0]];
+  }
+
+  function applyMarketChange(newMarket) {
+    if (!getMarketMeta(newMarket)) return false;
+    state.market = newMarket;
+    state.nivel = pickLevelFor(newMarket, state.nivel);
+    state.inmueble = pickInmuebleFor(newMarket, state.nivel, state.inmueble);
+    state.selectedRegions = new Set(pickDefaultRegions(newMarket, state.nivel, state.inmueble));
+    state.hiddenSeries = { sale: new Set(), rent: new Set() };
+    return true;
+  }
+
+  function applyLevelChange(newLevel) {
+    if (!getLevelMeta(state.market, newLevel)) return false;
+    state.nivel = newLevel;
+    state.inmueble = pickInmuebleFor(state.market, newLevel, state.inmueble);
+    state.selectedRegions = new Set(pickDefaultRegions(state.market, newLevel, state.inmueble));
+    state.hiddenSeries = { sale: new Set(), rent: new Set() };
+    return true;
+  }
+
+  function applyInmuebleChange(newInmueble) {
+    state.inmueble = newInmueble;
+    // Re-filtrar regiones seleccionadas para que sigan siendo validas
+    // para el nuevo inmueble. Si el cambio invalida TODAS, caer al default.
+    const allowed = currentRegionList();
+    const allowedSet = new Set(allowed);
+    const kept = Array.from(state.selectedRegions).filter((r) => allowedSet.has(r));
+    if (kept.length) {
+      state.selectedRegions = new Set(kept);
+    } else {
+      state.selectedRegions = new Set(pickDefaultRegions(state.market, state.nivel, state.inmueble));
+    }
+    state.hiddenSeries = { sale: new Set(), rent: new Set() };
+  }
+
+  // ===============================================================
+  // Colores
+  // ===============================================================
+
+  // Paleta para regiones sin color institucional fijo (barrios CABA y
+  // Cordoba/Rosario, partidos GBA): HSL distribuida segun el indice
+  // alfabetico en el catalogo del nivel actual.
   function colorFor(regionName) {
     if (colors[regionName]) return colors[regionName];
     const list = currentRegionList();
     const idx = list.indexOf(regionName);
     if (idx < 0) return '#0f3e7d';
-    // Distribuyo en hue 0..330 (saltando rojo puro) y alterno luminosidad
-    // para que regiones consecutivas no queden iguales si hay > 12.
     const hue = (idx * 47) % 360;
     const sat = 62;
     const lig = 42 + (idx % 3) * 8;
@@ -218,31 +342,15 @@
   }
 
   // ===============================================================
-  // Reglas de visualización (combos bloqueados)
-  // ===============================================================
-
-  // Combinaciones que el Centro no publica como gráfico (regla curada).
-  // Vacío por ahora: las reglas viejas referenciaban modo/universo que ya no
-  // se exponen al usuario. Si en el futuro aparecen casos que requieran
-  // bloqueo (p. ej. nivel × métrica sin datos), agregar entradas acá.
-  const BLOCKED = [];
-
-  function getBlockedReason(s) {
-    for (const rule of BLOCKED) {
-      if (rule.when(s)) return rule.reason;
-    }
-    return null;
-  }
-
-  // ===============================================================
   // Datos
   // ===============================================================
 
   function getRawSeries(side, inmueble, metric, region) {
-    const levelRoot = data[side] && data[side][state.nivel];
+    const marketRoot = data[side] && data[side][state.market];
+    if (!marketRoot) return null;
+    const levelRoot = marketRoot[state.nivel];
     if (!levelRoot || !levelRoot[inmueble] || !levelRoot[inmueble][metric]) return null;
     const metricNode = levelRoot[inmueble][metric];
-    // Precio guarda {stock: {region: pts}, flujo?: {region: pts}}.
     if (metricHasUniverso(metric)) {
       const universoNode = metricNode[state.universo];
       if (!universoNode) return null;
@@ -253,17 +361,15 @@
     return series && series.length ? series : null;
   }
 
-  // Devuelve true si la combinación actual de side+metric+universo tiene datos
-  // disponibles en el dataset (independientemente de la región).
   function universoAvailableFor(side, metric, universo) {
-    if (!metricHasUniverso(metric)) return true; // el filtro no aplica
+    if (!metricHasUniverso(metric)) return true;
     const node = data[side]
-      && data[side][state.nivel]
-      && data[side][state.nivel][state.inmueble]
-      && data[side][state.nivel][state.inmueble][metric];
+      && data[side][state.market]
+      && data[side][state.market][state.nivel]
+      && data[side][state.market][state.nivel][state.inmueble]
+      && data[side][state.market][state.nivel][state.inmueble][metric];
     return Boolean(node && node[universo]);
   }
-
 
   function applyRange(series, range) {
     if (!series || !series.length) return series;
@@ -281,9 +387,6 @@
       return series.map((p) => ({ x: p.x, y: (p.y / base) * 100 }));
     }
     if (mode === 'yoy' || mode === 'mom') {
-      // mom = lag 1 mes; yoy = lag 12 meses. Buscamos el valor previo en
-      // la serie *completa* (no recortada) para que la primera observacion
-      // del rango visible tambien tenga variacion calculada.
       const lag = mode === 'mom' ? -1 : -12;
       const map = new Map((fullSeries || series).map((p) => [p.x, p.y]));
       return series.map((p) => {
@@ -391,9 +494,11 @@
   // ---------------- TOOLBAR ----------------
 
   function renderToolbar() {
+    const marketLabel = marketDisplay(state.market);
+    const levelOpts = levelOptionsFor(state.market);
+    const levelLabel = (levelOpts.find((o) => o.value === state.nivel) || {}).label || '—';
     const regionsLabel = describeRegions();
-    const regionDropdownLabel = REGION_LABEL[state.nivel];
-    const nivelLabel = (LEVEL_OPTIONS.find((o) => o.value === state.nivel) || {}).label || '—';
+    const regionDropdownLabel = regionLabelFor(state.market, state.nivel);
     const inmuebleLabel = inmuebleDisplay(state.inmueble);
     const metricLabel = (METRIC_OPTIONS.find((o) => o.value === state.metric) || {}).label || '—';
 
@@ -404,14 +509,14 @@
     }));
     const enableSearch = regionOptions.length > 15;
 
-    // Opciones del dropdown de inmueble: value = data key (Casa/Departamento),
-    // label = display localizado.
-    const inmuebleOptions = inmuebles.map((v) => ({ value: v, label: inmuebleDisplay(v) }));
+    const visibleInms = visibleInmueblesFor(state.market, state.nivel);
+    const inmuebleOptions = visibleInms.map((v) => ({ value: v, label: inmuebleDisplay(v) }));
 
     return `
       <section class="toolbar" role="toolbar" aria-label="${escapeHtml(lang.toolbarAria || 'Filtros del explorador')}">
         <div class="toolbar-filters">
-          ${dropdownButton('nivel', lang.levelLabel || 'Nivel geográfico', nivelLabel)}
+          ${dropdownButton('market', lang.marketLabel || 'Mercado', marketLabel)}
+          ${dropdownButton('nivel', lang.levelLabel || 'Nivel geográfico', levelLabel)}
           ${dropdownButton('regions', regionDropdownLabel, regionsLabel)}
           ${dropdownButton('inmueble', lang.inmuebleLabel || 'Tipo de propiedad', inmuebleLabel)}
           ${dropdownButton('metric', lang.metricLabel || 'Métrica', metricLabel)}
@@ -422,7 +527,8 @@
           <button type="button" class="action-btn" data-action="download-rent" title="${escapeHtml(lang.actionDownloadRentTitle || 'Descargar alquiler')}" aria-label="${escapeHtml(lang.actionDownloadRentAria || 'Descargar alquiler como PNG')}">${iconDownload()}<span class="label-text">${escapeHtml(lang.actionDownloadRentLabel || 'Alquiler')}</span></button>
         </div>
 
-        ${dropdownMenu('nivel', lang.levelLabel || 'Nivel geográfico', LEVEL_OPTIONS, false, state.nivel)}
+        ${dropdownMenu('market', lang.marketLabel || 'Mercado', MARKET_OPTIONS, false, state.market)}
+        ${dropdownMenu('nivel', lang.levelLabel || 'Nivel geográfico', levelOpts, false, state.nivel)}
         ${dropdownMenu('regions', regionDropdownLabel, regionOptions, true, state.selectedRegions, enableSearch)}
         ${dropdownMenu('inmueble', lang.inmuebleLabel || 'Tipo de propiedad', inmuebleOptions, false, state.inmueble)}
         ${dropdownMenu('metric', lang.metricLabel || 'Métrica', METRIC_OPTIONS, false, state.metric)}
@@ -430,7 +536,7 @@
     `;
   }
 
-  // ---------------- RANGE CHIPS (período) ----------------
+  // ---------------- RANGE CHIPS (periodo) ----------------
 
   function renderRangeBar() {
     const chips = RANGE_OPTIONS.map((opt) => {
@@ -480,8 +586,6 @@
   }
 
   function dropdownMenu(key, label, options, multi, currentValueOrSet, enableSearch) {
-    // El menú se renderiza aparte y se posiciona via JS al abrir (lo dejamos como
-    // hijo del propio .dropdown contenedor para que el position:absolute lo ancle).
     const menuClass = enableSearch ? 'dropdown-menu has-search' : 'dropdown-menu';
     const searchPlaceholder = lang.searchPlaceholder || 'Buscar...';
     const searchAriaPrefix = lang.searchAriaPrefix || 'Buscar en';
@@ -525,9 +629,7 @@
   }
 
   function bindDropdownEvents() {
-    // Cerrar al click fuera
     document.addEventListener('click', closeAllDropdownsOnOutsideClick, true);
-
     document.querySelectorAll('.dropdown-trigger').forEach((trigger) => {
       trigger.addEventListener('click', (ev) => {
         ev.stopPropagation();
@@ -564,7 +666,6 @@
           opt.style.display = !q || txt.includes(q) ? '' : 'none';
         });
       });
-      // Foco automático al abrir
       setTimeout(() => searchInput.focus(), 30);
     }
 
@@ -576,9 +677,8 @@
         if (action === 'all') {
           state.selectedRegions = new Set(list);
         } else if (action === 'clear') {
-          // Mantenemos al menos uno seleccionado para no quedar sin datos.
           state.selectedRegions = new Set([list[0]]);
-          const noun = REGION_LABEL[state.nivel].toLowerCase();
+          const noun = regionLabelFor(state.market, state.nivel).toLowerCase();
           showToast(`${lang.toastKeepOnePrefix || 'Mantenemos al menos un'} ${noun}.`);
         }
         render();
@@ -590,9 +690,8 @@
     if (key === 'regions') {
       const checked = Array.from(menuEl.querySelectorAll('input[type="checkbox"]:checked')).map((i) => i.dataset.value);
       if (!checked.length) {
-        const noun = REGION_LABEL[state.nivel].toLowerCase();
+        const noun = regionLabelFor(state.market, state.nivel).toLowerCase();
         showToast(`${lang.toastSelectOnePrefix || 'Seleccioná al menos un'} ${noun}.`);
-        // re-check el primero por seguridad
         const fallbackVal = state.selectedRegions.values().next().value || currentRegionList()[0];
         const fallback = menuEl.querySelector(`input[data-value="${fallbackVal}"]`);
         if (fallback) fallback.checked = true;
@@ -600,7 +699,6 @@
       }
       state.selectedRegions = new Set(checked);
       render();
-      // Re-abrir el menú para que el usuario pueda seguir tildando
       reopenDropdown('regions');
       return;
     }
@@ -608,27 +706,36 @@
     const selected = menuEl.querySelector(`input[data-menu="${key}"]:checked`);
     if (!selected) return;
     const value = selected.dataset.value;
-    if (state[key] === value) {
-      closeAllDropdowns();
-      return;
-    }
-    if (key === 'nivel') {
-      // Cambiar de nivel resetea selección de regiones al default del nivel
-      // y limpia las series ocultas (los nombres ya no aplican).
-      state.nivel = value;
-      const fallback = DEFAULT_SELECTION[value] || [regions[value][0]];
-      // Filtrar a las que efectivamente existen en este snapshot.
-      const valid = fallback.filter((r) => regions[value].includes(r));
-      state.selectedRegions = new Set(valid.length ? valid : [regions[value][0]]);
-      state.hiddenSeries = { sale: new Set(), rent: new Set() };
+
+    if (key === 'market') {
+      if (state.market === value) { closeAllDropdowns(); return; }
+      applyMarketChange(value);
+      showToast(lang.toastMarketReset || 'Mercado actualizado.');
       render();
       return;
     }
-    if (key === 'inmueble' || key === 'metric') {
-      state.hiddenSeries = { sale: new Set(), rent: new Set() };
+
+    if (key === 'nivel') {
+      if (state.nivel === value) { closeAllDropdowns(); return; }
+      applyLevelChange(value);
+      render();
+      return;
     }
-    state[key] = value;
-    render();
+
+    if (key === 'inmueble') {
+      if (state.inmueble === value) { closeAllDropdowns(); return; }
+      applyInmuebleChange(value);
+      render();
+      return;
+    }
+
+    if (key === 'metric') {
+      if (state.metric === value) { closeAllDropdowns(); return; }
+      state.hiddenSeries = { sale: new Set(), rent: new Set() };
+      state.metric = value;
+      render();
+      return;
+    }
   }
 
   function reopenDropdown(key) {
@@ -658,14 +765,13 @@
       btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         if (action === 'reset') {
-          state.nivel = 'aglomerado';
-          state.selectedRegions = new Set(DEFAULT_SELECTION.aglomerado);
-          state.inmueble = defaultInmueble;
+          // Reset al estado inicial del mercado actual (no salta al primer mercado;
+          // resetear no debe perder el contexto del mercado en el que esta el usuario).
+          applyMarketChange(state.market);
           state.metric = 'precio';
           state.universo = FIXED_UNIVERSO;
           state.range = 'all';
           state.mode = FIXED_MODE;
-          state.hiddenSeries = { sale: new Set(), rent: new Set() };
           render();
           showToast(lang.toastReset || 'Filtros restablecidos.');
         }
@@ -715,25 +821,22 @@
 
     const { series, metricInfo } = buildPanelSeries(side);
 
-    // Header text (siempre presente, aún si el panel queda bloqueado)
     titleEl.textContent = composeTitle(metricInfo);
     subEl.textContent = composeSubtitle(metricInfo);
     const credit = (lang.footerCredit || '{snapshot}').replace('{snapshot}', formatSnapshot(snapshotId));
     noteEl.textContent = credit;
 
-    // 1. Regla de combo bloqueado (combinación explícitamente curada)
-    const blockedReason = getBlockedReason(state);
-    if (blockedReason) {
+    // 1. Celda oculta editorialmente: muestra el mensaje del cliente.
+    const hiddenReasonKey = hiddenReasonFor(state.market, state.nivel, side, state.inmueble);
+    if (hiddenReasonKey) {
+      const message = lang[hiddenReasonKey] || (lang.emptyChangeCombo || 'Combinación no disponible.');
       statsEl.innerHTML = '';
       legendEl.innerHTML = '';
-      canvasHost.innerHTML = renderEmptyState(blockedReason, true);
+      canvasHost.innerHTML = renderEmptyState(message, true);
       return;
     }
 
-    // 2. ¿El universo "stock" existe para este lado? (defensivo: en la
-    // práctica el pipeline siempre publica stock para precio en venta y
-    // alquiler. Mantenemos la guarda para no romper si un snapshot futuro
-    // viene incompleto.)
+    // 2. Universo no disponible para esta combinacion.
     if (metricHasUniverso(state.metric) && !universoAvailableFor(side, state.metric, state.universo)) {
       statsEl.innerHTML = '';
       legendEl.innerHTML = '';
@@ -751,14 +854,14 @@
       renderLegend(legendEl, side, series);
       canvasHost.innerHTML = renderEmptyState(
         series.length
-          ? (lang.emptyWidenPeriod || 'Probá ampliar el período o activar más aglomerados en la leyenda.')
-          : (lang.emptyChangeCombo || 'Probá con otra combinación de aglomerado, tipo de propiedad o métrica.'),
+          ? (lang.emptyWidenPeriod || 'Probá ampliar el período o activar más regiones en la leyenda.')
+          : (lang.emptyChangeCombo || 'Probá con otra combinación de mercado, nivel, tipo de propiedad o métrica.'),
         false,
       );
       return;
     }
 
-    // 3. Render normal
+    // 4. Render normal.
     renderStats(statsEl, side, series, visible, metricInfo);
     renderLegend(legendEl, side, series);
     canvasHost.innerHTML = renderSvg(side, visible, metricInfo);
@@ -769,25 +872,25 @@
     const sep = lang.titleSeparator || '·';
     const inmuebleLabel = pluralInmueble(inmuebleDisplay(state.inmueble));
     const parts = [metricInfo.label, sep, inmuebleLabel];
-    // Indicador del nivel geográfico cuando NO es aglomerado (default).
-    // Convención: cada segmento después de "·" arranca con mayúscula.
-    if (state.nivel === 'barrio') parts.push(sep, lang.titleBarriosCaba || 'Barrios CABA');
-    else if (state.nivel === 'municipio') parts.push(sep, lang.titleMunicipiosAmba || 'Municipios AMBA');
+
+    // Sufijos por (mercado, nivel). Buenos Aires + aglomerado es el
+    // estado default (sin sufijo). Para el resto, agrega marcador de
+    // contexto geografico.
+    if (state.market === 'buenos_aires') {
+      if (state.nivel === 'barrio') parts.push(sep, lang.titleBarriosCABA || 'Barrios CABA');
+      else if (state.nivel === 'municipio') parts.push(sep, lang.titleMunicipiosGBA || 'Partidos GBA');
+    } else {
+      const marketName = marketDisplay(state.market);
+      let tmpl = '';
+      if (state.nivel === 'ciudad') tmpl = lang.titleMarketCiudad || '{market}';
+      else if (state.nivel === 'zona') tmpl = lang.titleMarketZonas || 'Zonas {market}';
+      else if (state.nivel === 'barrio') tmpl = lang.titleMarketBarrios || 'Barrios {market}';
+      if (tmpl) parts.push(sep, tmpl.replace('{market}', marketName));
+    }
     return parts.join(' ');
   }
 
   function composeSubtitle(metricInfo) {
-    // Cada métrica se muestra en su unidad natural (alineada al informe oficial):
-    //   - Precio: USD/m² (venta) o ARS/m² corrientes (alquiler), mediana winsorizada.
-    //   - Oferta: índice normalizado a 1 en enero 2018 en el pipeline R.
-    //   - Demanda (Contactos): índice normalizado a 1 en enero 2019 en el
-    //     pipeline R (la captura de contactos arranca un año después que la
-    //     de publicaciones activas).
-    //   Verificado contra los CSVs del snapshot 202604/202605: la base es
-    //   uniforme por inmueble y por geografía (no depende de Casa vs Depto
-    //   ni de aglomerado vs barrio vs municipio).
-    //   El último mes del snapshot se excluye porque Demanda y Oferta siguen
-    //   acumulando después del corte mensual.
     const sep = lang.titleSeparator || '·';
     if (state.metric === 'oferta') {
       return `${metricInfo.unit} ${sep} ${lang.subtitleOfertaSuffix || ''}`;
@@ -795,8 +898,6 @@
     if (state.metric === 'demanda') {
       return `${metricInfo.unit} ${sep} ${lang.subtitleDemandaSuffix || ''}`;
     }
-    // Precio: la unidad ya describe completamente el subtítulo. No hace falta
-    // aclarar el universo porque siempre usamos "todos los avisos".
     return metricInfo.unit;
   }
 
@@ -852,8 +953,6 @@
     if (!series.length) { host.innerHTML = ''; return; }
     host.innerHTML = series.map((s) => {
       const hidden = state.hiddenSeries[side].has(s.name);
-      // data-name guarda la clave de datos (para el toggle de hiddenSeries);
-      // el texto visible usa el display localizado.
       return `<button type="button" data-side="${side}" data-name="${escapeHtml(s.name)}" class="${hidden ? 'is-hidden' : ''}" aria-pressed="${!hidden}">
         <span class="legend-swatch" style="background:${s.color}"></span>${escapeHtml(regionDisplay(s.name))}
       </button>`;
@@ -922,9 +1021,6 @@
     )).join('');
 
     const axisLabel = metricInfo.axisLabel;
-
-    // Eje Y label rotado -90° alrededor de su propia ancla, centrado en altura.
-    // Se posiciona suficientemente a la izquierda como para no chocar con los tick labels.
     const labelX = -(margin.left - 22);
     const labelY = innerH / 2;
     const yAxisTitle = `<text class="axis-title-y" x="${labelX}" y="${labelY}" transform="rotate(-90, ${labelX}, ${labelY})" text-anchor="middle" font-size="12">${escapeHtml(axisLabel)}</text>`;
@@ -1116,16 +1212,11 @@
       const img = await loadImage(url);
       const headTxt = collectPanelTexts(panel);
 
-      // Layout del PNG exportado.
-      // Comparado con la vista en pantalla, agrandamos título, subtítulo y
-      // leyenda para que respiren contra la imagen del chart (que ya viene
-      // escalada 2.4×). Si se queda corto el bloque de leyenda con muchas
-      // regiones, se reparte en varias filas (calculadas abajo).
       const cardPadding = 36;
       const tagSize = 22;
       const titleSize = 34;
       const subSize = 19;
-      const titleBlockHeight = 132;     // tag + título + subtítulo + padding
+      const titleBlockHeight = 132;
       const legendRowHeight = 30;
       const legendDotRadius = 8;
       const legendSize = 19;
@@ -1136,7 +1227,6 @@
       const innerHeight = targetH;
       const canvasWidth = innerWidth + cardPadding * 2;
 
-      // Calcular cuántas filas de leyenda vamos a necesitar para asignar la altura adecuada.
       const tmpCanvas = document.createElement('canvas');
       const tmpCtx = tmpCanvas.getContext('2d');
       tmpCtx.font = `${legendSize}px "Aptos","Segoe UI",sans-serif`;
@@ -1183,7 +1273,6 @@
 
       ctx.drawImage(img, cardPadding, cardPadding + titleBlockHeight);
 
-      // Legend
       let legendY = cardPadding + titleBlockHeight + innerHeight + 14;
       let lx = cardPadding;
       ctx.font = `${legendSize}px "Aptos","Segoe UI",sans-serif`;
@@ -1203,7 +1292,6 @@
         lx += labelWidth;
       }
 
-      // Footer
       ctx.fillStyle = '#5b6b85';
       ctx.font = `${footerSize}px "Aptos","Segoe UI",sans-serif`;
       ctx.textBaseline = 'bottom';
@@ -1276,10 +1364,10 @@
   }
 
   function buildDownloadName(suffix) {
-    // Filename usa la clave de datos (Spanish) para que el nombre sea estable
-    // entre idiomas: ej "cecn_amba_sale_precio_departamento_all.png".
     const inmueble = state.inmueble.toLowerCase();
-    return `cecn_amba_${suffix}_${state.metric}_${inmueble}_${state.range}.png`;
+    // Filename usa la clave de datos (ASCII Spanish) para que el nombre
+    // sea estable entre idiomas: ej "cecn_cordoba_zona_sale_precio_departamento_all.png".
+    return `cecn_${state.market}_${state.nivel}_${suffix}_${state.metric}_${inmueble}_${state.range}.png`;
   }
 
   // ---------------- ICONS ----------------

@@ -1,7 +1,5 @@
-# El explorador no usa librerías externas — sólo Python estándar
-# (csv, json, base64, pathlib, argparse, re, dataclasses, http.server).
+# El proyecto es 100% Python stdlib. No tiene dependencias externas.
+# Este archivo existe para senializar la ausencia de dependencias y para
+# evitar que herramientas de packaging lancen un error al no encontrarlo.
 #
-# Versión mínima de Python requerida: 3.10
-# (usa typing PEP 604 — `str | None`).
-#
-# Si en el futuro se agregan dependencias, listarlas aquí con versión pinneada.
+# Requisito unico: Python 3.10 o superior.

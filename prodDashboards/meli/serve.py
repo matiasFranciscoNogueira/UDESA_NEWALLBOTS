@@ -1,12 +1,15 @@
-"""
-Servidor estático mínimo para servir el explorador AMBA por HTTP.
+"""Servidor estatico minimo para servir el explorador por HTTP.
 
 Pensado para usar con ngrok:
-    1) python build.py
-    2) python serve.py          (default port 8000)
-    3) ngrok http 8000          (en otra terminal)
 
-Acepta --port y --host. No requiere dependencias externas.
+::
+
+    1) python build.py            # genera amba_explorer.html
+    2) python serve.py            # default port 8000
+    3) ngrok http 8000            # en otra terminal
+
+Acepta ``--port``, ``--host`` y ``--directory``. No requiere dependencias
+externas.
 """
 
 from __future__ import annotations
@@ -25,20 +28,21 @@ def main() -> None:
     parser.add_argument(
         "--directory",
         default=str(Path(__file__).resolve().parent),
-        help="Directorio raíz a servir (default: carpeta del script).",
+        help="Directorio raiz a servir (default: carpeta del script).",
     )
     args = parser.parse_args()
 
     handler = partial(http.server.SimpleHTTPRequestHandler, directory=args.directory)
 
-    # Permite reusar el puerto inmediatamente después de Ctrl+C.
+    # Permite reusar el puerto inmediatamente despues de Ctrl+C.
     class Reusable(socketserver.TCPServer):
         allow_reuse_address = True
 
     with Reusable((args.host, args.port), handler) as httpd:
         print(f"Sirviendo {args.directory} en http://{args.host}:{args.port}")
-        print("Abrí http://localhost:{0}/amba_explorer.html en el navegador.".format(args.port))
-        print("Para exponer por ngrok:  ngrok http {0}".format(args.port))
+        print(f"Abri http://localhost:{args.port}/amba_explorer.html en el navegador.")
+        print(f"Version EN: http://localhost:{args.port}/amba_explorer_en.html")
+        print(f"Para exponer por ngrok:  ngrok http {args.port}")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
